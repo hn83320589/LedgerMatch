@@ -28,6 +28,9 @@ jobs:
       - name: Test
         run: dotnet test LedgerMatch.sln -c Release --no-build --filter "Category!=Perf" --logger trx --results-directory TestResults
 
+      - name: Performance tests (100k transactions)
+        run: dotnet test tests/LedgerMatch.Perf.Tests/LedgerMatch.Perf.Tests.csproj -c Release --no-build --filter "Category=Perf" --logger "console;verbosity=detailed" --logger trx --results-directory TestResults
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
