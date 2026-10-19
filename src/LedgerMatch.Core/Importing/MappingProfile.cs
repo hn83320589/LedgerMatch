@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using LedgerMatch.Core.Domain;
+
 namespace LedgerMatch.Core.Importing;
 
 public enum ProfileKind
@@ -24,6 +27,7 @@ public enum AmountMode
 /// <summary>Reference to a CSV column, either by header name or by 1-based index.</summary>
 public sealed record ColumnRef
 {
+    [JsonConstructor]
     private ColumnRef(string? name, int? index)
     {
         Name = name;
@@ -45,7 +49,7 @@ public sealed record ColumnRef
 /// Describes how to read one CSV layout. Bank accounts bind a <see cref="ProfileKind.Statement"/> profile;
 /// receipt imports use a <see cref="ProfileKind.Receipt"/> profile.
 /// </summary>
-public sealed record MappingProfile
+public sealed record MappingProfile : IEntity
 {
     public long Id { get; init; }
 
