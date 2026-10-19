@@ -19,6 +19,21 @@ public sealed partial class SqliteLedgerStore
     public StatementBalance? GetStatementBalance(long accountId, YearMonth month) =>
         Query(EntityMaps.StatementBalance, "WHERE account_id = @a AND month = @m", ("@a", accountId), ("@m", month)).SingleOrDefault();
 
+    public IReadOnlyList<YearMonth> GetActiveMonths()
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.Command(
+            "SELECT posting_period FROM bank_txn UNION SELECT substr(issue_date, 1, 7) FROM receipt ORDER BY 1;");
+        using var reader = command.ExecuteReader();
+        var months = new List<YearMonth>();
+        while (reader.Read())
+        {
+            months.Add(YearMonth.Parse(reader.GetString(0)));
+        }
+
+        return months;
+    }
+
     public ReconciliationData GetReconciliationData(long accountId, YearMonth month)
     {
         var account = GetAccount(accountId) ?? throw new LedgerException($"找不到帳戶 #{accountId}。");

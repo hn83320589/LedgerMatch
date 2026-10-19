@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LedgerMatch.Presentation\LedgerMatch.Presentation.csproj" />
+    <ProjectReference Include="..\..\src\LedgerMatch.Data\LedgerMatch.Data.csproj" />
+    <Compile Include="..\LedgerMatch.Core.Tests\Importing\TestProfiles.cs" Link="Shared\TestProfiles.cs" />
+    <Compile Include="..\LedgerMatch.Data.Tests\TestDatabase.cs" Link="Shared\TestDatabase.cs" />
   </ItemGroup>
 
 </Project>

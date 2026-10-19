@@ -86,4 +86,7 @@ public interface ILedgerQueries
 
     /// <summary>All rows the reconciliation of <paramref name="month"/> depends on.</summary>
     Reporting.ReconciliationData GetReconciliationData(long accountId, YearMonth month);
+
+    /// <summary>Months that have transactions or receipts, ascending.</summary>
+    IReadOnlyList<YearMonth> GetActiveMonths();
 }
