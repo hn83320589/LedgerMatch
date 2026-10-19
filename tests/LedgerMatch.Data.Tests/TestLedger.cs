@@ -5,6 +5,7 @@ using LedgerMatch.Core.History;
 using LedgerMatch.Core.Importing;
 using LedgerMatch.Core.Matching;
 using LedgerMatch.Core.Receivables;
+using LedgerMatch.Core.Periods;
 using LedgerMatch.Core.Persistence;
 using LedgerMatch.Core.Setup;
 using LedgerMatch.Core.Tests.Importing;
@@ -47,6 +48,8 @@ public sealed class TestLedger : IDisposable
 
     public RuleService Rules { get; private set; } = null!;
 
+    public PeriodService Periods { get; private set; } = null!;
+
     /// <summary>Simulates closing and restarting the app on the same file.</summary>
     public void Reopen()
     {
@@ -62,6 +65,7 @@ public sealed class TestLedger : IDisposable
         Categories = new CategoryService(Store, Store, History);
         Classification = new ClassificationService(Store, Store, History);
         Rules = new RuleService(Store, Store, History);
+        Periods = new PeriodService(Store, Store, Executor, History, Time);
     }
 
     public Account CreateAccount(MappingProfile profile, string name = "測試帳戶", long openingCents = 0)

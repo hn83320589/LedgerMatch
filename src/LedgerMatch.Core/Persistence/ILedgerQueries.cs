@@ -65,4 +65,14 @@ public interface ILedgerQueries
     IReadOnlyList<Rule> GetRules();
 
     Rule? GetRule(long id);
+
+    IReadOnlyList<Period> GetPeriods();
+
+    Period? GetPeriod(YearMonth month);
+
+    IReadOnlyList<PeriodEvent> GetPeriodEvents();
+
+    PendingItem? GetPendingItem(long id);
+
+    IReadOnlyList<PendingItem> GetPendingItems(PendingStatus? status = null);
 }
