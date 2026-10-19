@@ -1,0 +1,110 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using LedgerMatch.Core.Domain;
+using LedgerMatch.Core.Importing;
+using LedgerMatch.Core.Reporting;
+
+namespace LedgerMatch.Core.Tests.Reporting;
+
+public class ReconciliationExportTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 4, 5, 10, 0, 0, TimeSpan.FromHours(8));
+
+    private static ReconciliationReport Report() => ReconciliationCalculator.Compute(ReconciliationCalculatorTests.HandExample(), Now);
+
+    [Fact]
+    public void Csv_HasUtf8BomAndRoundTripsThroughTheParser()
+    {
+        var bytes = ReconciliationCsv.Write(Report());
+
+        Assert.Equal([0xEF, 0xBB, 0xBF], bytes.Take(3));
+        var records = CsvReader.Read(new StringReader(Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3)), ',').ToList();
+        Assert.All(records, r => Assert.Null(r.Error));
+        Assert.Contains(records, r => r.Fields.SequenceEqual(["帳戶", "甲銀行帳戶"]));
+        Assert.Contains(records, r => r.Fields[0] == "調整後銀行餘額" && r.Fields[4] == "-994.25");
+        Assert.Contains(records, r => r.Fields[0] == "調整後帳面餘額" && r.Fields[4] == "-994.25");
+        Assert.Contains(records, r => r.Fields.Count > 2 && r.Fields[2] == "R15" && r.Fields[4] == "2500.00");
+    }
+
+    [Fact]
+    public void Csv_EscapesCommasQuotesAndNewlines()
+    {
+        Assert.Equal("\"a,b\"", CsvWriter.Escape("a,b"));
+        Assert.Equal("\"他說\"\"好\"\"\"", CsvWriter.Escape("他說\"好\""));
+        Assert.Equal("\"line1\nline2\"", CsvWriter.Escape("line1\nline2"));
+        Assert.Equal("\" pad\"", CsvWriter.Escape(" pad"));
+        Assert.Equal("中文", CsvWriter.Escape("中文"));
+    }
+
+    [Fact]
+    public void Csv_SpecialCharactersInDataSurviveRoundTrip()
+    {
+        var tricky = "王\"小姐\", 蛋糕\n訂金 <b>&</b>";
+        var report = Report() with
+        {
+            DepositsInTransit = new ReconciliationSection("在途", [new ReconciliationItem(new DateOnly(2026, 3, 1), "R,1", tricky, Money.FromCents(100), null)]),
+        };
+
+        var bytes = ReconciliationCsv.Write(report);
+        var records = CsvReader.Read(new StringReader(Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3)), ',').ToList();
+
+        Assert.Contains(records, r => r.Fields.Count > 3 && r.Fields[2] == "R,1" && r.Fields[3] == tricky);
+    }
+
+    [Fact]
+    public void Html_IsA4PortraitAndEscapesText()
+    {
+        var report = Report() with
+        {
+            AccountName = "甲銀行 <script>alert(1)</script> & \"引號\"",
+        };
+
+        var html = ReconciliationHtml.Render(report);
+
+        Assert.Contains("@page { size: A4 portrait;", html);
+        Assert.Contains("<meta charset=\"utf-8\">", html);
+        Assert.DoesNotContain("<script>", html);
+        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;引號&quot;", html);
+    }
+
+    [Fact]
+    public void Html_ShowsSameFiguresAsTheLayout()
+    {
+        var report = Report();
+        var html = ReconciliationHtml.Render(report);
+
+        foreach (var line in ReconciliationLayout.Lines(report).Where(l => l.Amount is not null))
+        {
+            Assert.Contains(System.Net.WebUtility.HtmlEncode(line.Amount!.Value.ToString()), html);
+        }
+
+        Assert.Contains("調整後銀行餘額", html);
+        Assert.Contains("-994.25", html);
+    }
+
+    [Fact]
+    public void Html_LongListsAreCutWithACountAndPointerToCsv()
+    {
+        var many = Enumerable.Range(1, 60)
+            .Select(i => new ReconciliationItem(new DateOnly(2026, 3, 1 + (i % 28)), $"R{i:D3}", $"客戶{i}", Money.FromCents(100), null))
+            .ToList();
+        var report = Report() with { DepositsInTransit = new ReconciliationSection("在途存款", many) };
+
+        var html = ReconciliationHtml.Render(report, maxItemRows: 28);
+
+        Assert.Equal(28, Regex.Matches(html, "<tr class=\"item\">").Count);
+        Assert.Contains("其餘 32 筆（合計 32.00）", html);
+        Assert.Contains("CSV", html);
+    }
+
+    [Fact]
+    public void Layout_ListsEveryItemOnce()
+    {
+        var report = Report();
+        var items = ReconciliationLayout.Lines(report).Where(l => l.Kind == ReconciliationLineKind.Item).ToList();
+        Assert.Equal(
+            report.DepositsInTransit.Items.Count + report.OtherBookItems.Items.Count + report.OutstandingItems.Items.Count
+                + report.BankOnlyDeposits.Items.Count + report.BankOnlyWithdrawals.Items.Count,
+            items.Count);
+    }
+}
