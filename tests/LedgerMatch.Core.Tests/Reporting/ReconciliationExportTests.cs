@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using LedgerMatch.Core.Domain;
 using LedgerMatch.Core.Importing;
 using LedgerMatch.Core.Reporting;
+using Item = LedgerMatch.Core.Reporting.ReconciliationItem;
 
 namespace LedgerMatch.Core.Tests.Reporting;
 
@@ -93,8 +94,35 @@ public class ReconciliationExportTests
         var html = ReconciliationHtml.Render(report, maxItemRows: 28);
 
         Assert.Equal(28, Regex.Matches(html, "<tr class=\"item\">").Count);
-        Assert.Contains("其餘 32 筆（合計 32.00）", html);
+        Assert.Contains("其餘 36 筆（合計 36.00）", html); // the other 4 sample items take their share of the 28 rows first
         Assert.Contains("CSV", html);
+    }
+
+    [Theory]
+    [InlineData(new[] { 60, 50 }, 28, new[] { 24, 4 })]
+    [InlineData(new[] { 2, 60, 60 }, 28, new[] { 2, 22, 4 })]
+    [InlineData(new[] { 3, 1 }, 28, new[] { 3, 1 })]
+    [InlineData(new[] { 10, 10, 10, 10, 10, 10, 10, 10 }, 28, new[] { 4, 4, 4, 4, 4, 4, 4, 0 })]
+    public void Html_RowBudget_GivesEverySectionAShareFirst(int[] sizes, int budget, int[] expected)
+    {
+        Assert.Equal(expected, ReconciliationHtml.Quotas(sizes, budget));
+    }
+
+    [Fact]
+    public void Html_TwoLongSections_BothShowRows()
+    {
+        Item[] Many(string prefix) => Enumerable.Range(1, 60).Select(i => new Item(new DateOnly(2026, 3, 1), $"{prefix}{i}", "x", Money.FromCents(100), null)).ToArray();
+        var report = Report() with
+        {
+            DepositsInTransit = new ReconciliationSection("在途存款", Many("R")),
+            BankOnlyDeposits = new ReconciliationSection("未配對入帳", Many("T")),
+        };
+
+        var html = ReconciliationHtml.Render(report);
+
+        Assert.Contains(">T1<", html);
+        Assert.Contains("其餘 38 筆", html); // 4 + 1 + 1 + 4 rows reserved, the remaining 18 go to the first section
+        Assert.Contains("其餘 56 筆", html);
     }
 
     [Fact]

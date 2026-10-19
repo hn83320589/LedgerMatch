@@ -84,12 +84,15 @@ public static class ReconciliationCsv
 }
 
 /// <summary>
-/// Self-contained printable HTML sized for one A4 portrait page. Long item lists are cut to fit the page;
-/// each cut section says how many items are omitted and that the CSV export has the full list.
+/// Self-contained printable HTML sized for one A4 portrait page. Long item lists are cut to fit the page:
+/// every non-empty section first gets up to <see cref="MinRowsPerSection"/> rows, the rest of the budget goes to
+/// sections in order, and each cut section says how many items are omitted and that the CSV export has them all.
 /// </summary>
 public static class ReconciliationHtml
 {
     public const int DefaultMaxItemRows = 28;
+
+    public const int MinRowsPerSection = 4;
 
     public static string Render(ReconciliationReport report, int maxItemRows = DefaultMaxItemRows)
     {
@@ -114,7 +117,7 @@ public static class ReconciliationHtml
             .meta { margin: 0 0 3mm; color: #333; }
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
             td { padding: 0.6mm 1.5mm; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-            col.date { width: 20mm; } col.ref { width: 26mm; } col.amount { width: 32mm; }
+            col.date { width: 26mm; } col.ref { width: 26mm; } col.amount { width: 32mm; }
             td.amount { text-align: right; font-variant-numeric: tabular-nums; }
             tr.heading td { font-weight: bold; font-size: 11pt; padding-top: 2.5mm; border-bottom: 0.4mm solid #000; }
             tr.section td { font-weight: bold; padding-top: 1.2mm; }
@@ -134,7 +137,8 @@ public static class ReconciliationHtml
         html.Append("<table>\n<colgroup><col class=\"date\"><col class=\"ref\"><col><col class=\"amount\"></colgroup>\n");
 
         var lines = ReconciliationLayout.Lines(report);
-        var budget = maxItemRows;
+        var quotas = Quotas(SectionSizes(lines), maxItemRows);
+        var section = 0;
         for (var i = 0; i < lines.Count; i++)
         {
             var line = lines[i];
@@ -147,8 +151,7 @@ public static class ReconciliationHtml
                 }
 
                 i--;
-                var shown = sectionItems.Take(Math.Max(0, budget)).ToList();
-                budget -= shown.Count;
+                var shown = sectionItems.Take(quotas[section++]).ToList();
                 foreach (var row in shown)
                 {
                     var item = row.Item!;
@@ -172,6 +175,45 @@ public static class ReconciliationHtml
 
         html.Append("</table>\n</div>\n</body>\n</html>\n");
         return html.ToString();
+    }
+
+    /// <summary>Row budget per item group: a fair minimum for each, then the remainder in order.</summary>
+    internal static int[] Quotas(IReadOnlyList<int> sizes, int budget)
+    {
+        var quotas = new int[sizes.Count];
+        for (var i = 0; i < sizes.Count && budget > 0; i++)
+        {
+            quotas[i] = Math.Min(Math.Min(sizes[i], MinRowsPerSection), budget);
+            budget -= quotas[i];
+        }
+
+        for (var i = 0; i < sizes.Count && budget > 0; i++)
+        {
+            var extra = Math.Min(sizes[i] - quotas[i], budget);
+            quotas[i] += extra;
+            budget -= extra;
+        }
+
+        return quotas;
+    }
+
+    private static List<int> SectionSizes(IReadOnlyList<ReconciliationLine> lines)
+    {
+        var sizes = new List<int>();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].Kind == ReconciliationLineKind.Item && (i == 0 || lines[i - 1].Kind != ReconciliationLineKind.Item))
+            {
+                sizes.Add(0);
+            }
+
+            if (lines[i].Kind == ReconciliationLineKind.Item)
+            {
+                sizes[^1]++;
+            }
+        }
+
+        return sizes;
     }
 
     private static string E(string text) => WebUtility.HtmlEncode(text);

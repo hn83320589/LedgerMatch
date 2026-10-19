@@ -24,6 +24,10 @@ switch (args[0])
         var summary = BulkGenerator.CreateDatabase(args[1], count, seed);
         Console.WriteLine(summary);
         break;
+    case "report":
+        // report <db> <account-name> <yyyy-MM> <out-dir>: writes the reconciliation as CSV and HTML
+        ReportExport.Write(args[1], args[2], YearMonth.Parse(args[3]), args[4]);
+        break;
     case "month-csv":
         var rows = args.Length > 2 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 5_000;
         var csvSeed = args.Length > 3 ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 7;
