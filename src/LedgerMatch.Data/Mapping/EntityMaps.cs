@@ -107,8 +107,59 @@ internal static class EntityMaps
         ],
         r => new PeriodEvent(r.Long("id"), r.Month("month"), r.Enum<PeriodAction>("action"), r.NStr("reason"), r.Timestamp("at")));
 
+    public static readonly TableMap<Receipt> Receipt = new(
+        "receipt",
+        [
+            ("id", e => e.Id),
+            ("account_id", e => e.AccountId),
+            ("issue_date", e => e.IssueDate),
+            ("customer", e => e.Customer),
+            ("receipt_no", e => e.ReceiptNo),
+            ("amount_cents", e => e.Amount),
+            ("note", e => e.Note),
+            ("import_batch_id", e => e.ImportBatchId),
+        ],
+        r => new Receipt(
+            r.Long("id"), r.Long("account_id"), r.Date("issue_date"), r.Str("customer"), r.Str("receipt_no"), r.Money("amount_cents"),
+            r.NStr("note"), r.NLong("import_batch_id")));
+
+    public static readonly TableMap<Match> Match = new(
+        "match",
+        [
+            ("id", e => e.Id),
+            ("deposit_txn_id", e => e.DepositTxnId),
+            ("period", e => e.Period),
+            ("kind", e => e.Kind),
+            ("confidence", e => e.Confidence),
+            ("fee_cents", e => e.Fee),
+            ("note", e => e.Note),
+        ],
+        r => new Match(
+            r.Long("id"), r.Long("deposit_txn_id"), r.Month("period"), r.Enum<MatchKind>("kind"), r.Enum<MatchConfidence>("confidence"),
+            r.Money("fee_cents"), r.NStr("note")));
+
+    public static readonly TableMap<MatchLink> MatchLink = new(
+        "match_link",
+        [
+            ("id", e => e.Id),
+            ("match_id", e => e.MatchId),
+            ("receipt_id", e => e.ReceiptId),
+            ("period", e => e.Period),
+        ],
+        r => new MatchLink(r.Long("id"), r.Long("match_id"), r.Long("receipt_id"), r.Month("period")));
+
+    public static readonly TableMap<Setting> Setting = new(
+        "setting",
+        [
+            ("id", e => e.Id),
+            ("key", e => e.Key),
+            ("value_json", e => e.ValueJson),
+        ],
+        r => new Setting(r.Long("id"), r.Str("key"), r.Str("value_json")));
+
     public static readonly IReadOnlyDictionary<Type, ITableMap> ByType =
-        new ITableMap[] { Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent }.ToDictionary(m => m.EntityType);
+        new ITableMap[] { Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent, Receipt, Match, MatchLink, Setting }
+            .ToDictionary(m => m.EntityType);
 
     public static BankTransaction ReadBankTransaction(Microsoft.Data.Sqlite.SqliteDataReader r) => new(
         r.Long("id"), r.Long("account_id"), r.Date("txn_date"), r.Month("posting_period"), r.Money("amount_cents"), r.Str("description"),

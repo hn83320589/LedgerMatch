@@ -2,6 +2,8 @@ using LedgerMatch.Core;
 using LedgerMatch.Core.Domain;
 using LedgerMatch.Core.History;
 using LedgerMatch.Core.Importing;
+using LedgerMatch.Core.Matching;
+using LedgerMatch.Core.Receivables;
 using LedgerMatch.Core.Persistence;
 using LedgerMatch.Core.Setup;
 using LedgerMatch.Core.Tests.Importing;
@@ -32,6 +34,12 @@ public sealed class TestLedger : IDisposable
 
     public StatementImportService Statements { get; private set; } = null!;
 
+    public SettingsService Settings { get; private set; } = null!;
+
+    public ReceiptService Receipts { get; private set; } = null!;
+
+    public MatchingService Matching { get; private set; } = null!;
+
     /// <summary>Simulates closing and restarting the app on the same file.</summary>
     public void Reopen()
     {
@@ -41,6 +49,9 @@ public sealed class TestLedger : IDisposable
         History = new UndoRedoService(Executor);
         Setup = new SetupService(Store, Store, History);
         Statements = new StatementImportService(Store, Store, Executor, Time);
+        Settings = new SettingsService(Store, Store, History);
+        Receipts = new ReceiptService(Store, Store, Executor, History, Time);
+        Matching = new MatchingService(Store, Store, History, Settings);
     }
 
     public Account CreateAccount(MappingProfile profile, string name = "測試帳戶", long openingCents = 0)
@@ -58,6 +69,9 @@ public sealed class TestLedger : IDisposable
 
     public ImportSummary ImportBig5(Account account, string csv, string name = "b.csv") =>
         Statements.Import(account.Id, TestProfiles.Big5(csv), name);
+
+    public Receipt AddReceipt(Account account, string no, long cents, DateOnly date, string customer = "客戶") =>
+        Receipts.Add(account.Id, date, customer, no, Money.FromCents(cents), null);
 
     public void Dispose() => _db.Dispose();
 }
