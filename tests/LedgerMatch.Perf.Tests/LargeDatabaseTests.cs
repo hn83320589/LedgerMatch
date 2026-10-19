@@ -35,7 +35,7 @@ public sealed class LargeDatabaseFixture : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(Result.Path);
         try
         {
             System.IO.Directory.Delete(Directory, recursive: true);

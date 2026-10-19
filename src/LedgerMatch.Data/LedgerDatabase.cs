@@ -24,13 +24,7 @@ public sealed partial class LedgerDatabase
         Path = path;
         SchemaVersion = schemaVersion;
         BackupPath = backupPath;
-        ConnectionString = new SqliteConnectionStringBuilder
-        {
-            DataSource = path,
-            Mode = SqliteOpenMode.ReadWrite,
-            ForeignKeys = true,
-            Pooling = true,
-        }.ToString();
+        ConnectionString = PooledConnectionString(path);
     }
 
     public static IReadOnlyList<Migration> BuiltInMigrations { get; } = LoadEmbeddedMigrations();
@@ -92,12 +86,30 @@ public sealed partial class LedgerDatabase
         return new LedgerDatabase(path, version, backup);
     }
 
+    /// <summary>
+    /// Closes the idle pooled connections of one database file so the file can be moved, deleted or reopened.
+    /// Unlike <see cref="SqliteConnection.ClearAllPools"/>, it does not touch connections to other files that may be in use.
+    /// </summary>
+    public static void ReleasePool(string path)
+    {
+        using var connection = new SqliteConnection(PooledConnectionString(path));
+        SqliteConnection.ClearPool(connection);
+    }
+
     public SqliteConnection OpenConnection()
     {
         var connection = new SqliteConnection(ConnectionString);
         connection.Open();
         return connection;
     }
+
+    private static string PooledConnectionString(string path) => new SqliteConnectionStringBuilder
+    {
+        DataSource = path,
+        Mode = SqliteOpenMode.ReadWrite,
+        ForeignKeys = true,
+        Pooling = true,
+    }.ToString();
 
     private static int Inspect(SqliteConnection connection, string path, int latest)
     {

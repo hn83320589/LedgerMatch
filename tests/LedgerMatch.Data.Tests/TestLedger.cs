@@ -53,7 +53,7 @@ public sealed class TestLedger : IDisposable
     /// <summary>Simulates closing and restarting the app on the same file.</summary>
     public void Reopen()
     {
-        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(_db.Path);
         Store = _db.OpenStore();
         Executor = new LedgerCommandExecutor(Store, Time);
         History = new UndoRedoService(Executor);

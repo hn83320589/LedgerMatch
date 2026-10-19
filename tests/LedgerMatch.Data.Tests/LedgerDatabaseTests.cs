@@ -42,7 +42,7 @@ public class LedgerDatabaseTests : IDisposable
         Assert.Equal(DatabaseOpenFailure.TooNew, ex.Failure);
         Assert.Contains("較新版", ex.Message);
         Assert.Contains(_db.Path, ex.Message);
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(_db.Path);
         Assert.Equal(before, File.ReadAllBytes(_db.Path));
     }
 
@@ -67,7 +67,7 @@ public class LedgerDatabaseTests : IDisposable
             store.ReserveIds(1);
         }
 
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(_db.Path);
         using (var connection = new SqliteConnection($"Data Source={_db.Path};Pooling=False"))
         {
             connection.Open();
@@ -163,7 +163,7 @@ public class LedgerDatabaseTests : IDisposable
 
     private long Pragma(string name)
     {
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(_db.Path);
         using var connection = new SqliteConnection($"Data Source={_db.Path};Pooling=False");
         connection.Open();
         using var cmd = connection.CreateCommand();
@@ -173,7 +173,7 @@ public class LedgerDatabaseTests : IDisposable
 
     private void SetPragma(string name, int value)
     {
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(_db.Path);
         using var connection = new SqliteConnection($"Data Source={_db.Path};Pooling=False");
         connection.Open();
         using var cmd = connection.CreateCommand();

@@ -1,5 +1,3 @@
-using Microsoft.Data.Sqlite;
-
 namespace LedgerMatch.Data.Tests;
 
 /// <summary>A database file in a fresh temp folder, deleted on dispose.</summary>
@@ -22,7 +20,7 @@ public sealed class TestDatabase : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        LedgerDatabase.ReleasePool(Path);
         try
         {
             System.IO.Directory.Delete(Directory, recursive: true);
