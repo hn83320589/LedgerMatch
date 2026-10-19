@@ -43,7 +43,9 @@ public sealed partial class LedgerSession : ObservableObject
         // Background work (matching, imports) commits on worker threads; listeners update UI-bound collections.
         _uiContext = SynchronizationContext.Current;
         History.Changed += (_, _) => OnUiThread(NotifyDataChanged);
-        currentMonth = YearMonth.Of(DateOnly.FromDateTime(time.GetLocalNow().DateTime));
+        // Start on the newest month that has data; a fresh database starts on the current month.
+        var active = queries.GetActiveMonths();
+        currentMonth = active.Count > 0 ? active[^1] : YearMonth.Of(DateOnly.FromDateTime(time.GetLocalNow().DateTime));
     }
 
     public event EventHandler? DataChanged;

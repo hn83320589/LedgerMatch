@@ -37,6 +37,19 @@ public sealed partial class ShellViewModel : PageViewModel
     [ObservableProperty]
     private YearMonth selectedMonth;
 
+    /// <summary>Index view of <see cref="SelectedMonth"/> for a ComboBox (YearMonth is a struct and cannot be null).</summary>
+    public int SelectedMonthIndex
+    {
+        get => Months.IndexOf(SelectedMonth);
+        set
+        {
+            if (value >= 0 && value < Months.Count)
+            {
+                SelectedMonth = Months[value];
+            }
+        }
+    }
+
     public bool IsCurrentMonthClosed => Session.IsCurrentMonthClosed;
 
     public string MonthStatus => Session.IsCurrentMonthClosed ? $"{Session.CurrentMonth} 已結帳（唯讀）" : $"{Session.CurrentMonth} 未結帳";
@@ -67,6 +80,7 @@ public sealed partial class ShellViewModel : PageViewModel
         OnPropertyChanged(nameof(RedoDescription));
         OnPropertyChanged(nameof(MonthStatus));
         OnPropertyChanged(nameof(IsCurrentMonthClosed));
+        OnPropertyChanged(nameof(SelectedMonthIndex));
     }
 
     partial void OnSelectedAccountChanged(Account? value)
@@ -80,6 +94,7 @@ public sealed partial class ShellViewModel : PageViewModel
 
     partial void OnSelectedMonthChanged(YearMonth value)
     {
+        OnPropertyChanged(nameof(SelectedMonthIndex));
         if (!_refreshing && value != default)
         {
             Session.CurrentMonth = value;

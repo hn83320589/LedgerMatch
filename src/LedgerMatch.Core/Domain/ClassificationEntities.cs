@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LedgerMatch.Core.Domain;
 
 /// <summary>A user-defined account category (科目). The built-in fee category cannot be deleted.</summary>
@@ -16,6 +18,7 @@ public sealed record SplitLine(
     decimal? Weight,
     YearMonth Period) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => Period;
 }
 

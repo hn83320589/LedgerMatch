@@ -106,7 +106,40 @@ public sealed partial class ProfileEditorViewModel : PageViewModel
 
     public bool IsStatement => Kind == ProfileKind.Statement;
 
-    partial void OnKindChanged(ProfileKind value) => OnPropertyChanged(nameof(IsStatement));
+    /// <summary>ComboBox-friendly views of the enum fields (0 = first option).</summary>
+    public int KindIndex
+    {
+        get => (int)Kind;
+        set => Kind = (ProfileKind)Math.Max(0, value);
+    }
+
+    public int EncodingIndex
+    {
+        get => (int)Encoding;
+        set => Encoding = (TextEncodingKind)Math.Max(0, value);
+    }
+
+    public int AmountModeIndex
+    {
+        get => (int)AmountMode;
+        set => AmountMode = (AmountMode)Math.Max(0, value);
+    }
+
+    public bool IsDebitCredit => AmountMode == AmountMode.DebitCredit;
+
+    partial void OnKindChanged(ProfileKind value)
+    {
+        OnPropertyChanged(nameof(IsStatement));
+        OnPropertyChanged(nameof(KindIndex));
+    }
+
+    partial void OnEncodingChanged(TextEncodingKind value) => OnPropertyChanged(nameof(EncodingIndex));
+
+    partial void OnAmountModeChanged(AmountMode value)
+    {
+        OnPropertyChanged(nameof(AmountModeIndex));
+        OnPropertyChanged(nameof(IsDebitCredit));
+    }
 
     public void Load(MappingProfile? profile)
     {

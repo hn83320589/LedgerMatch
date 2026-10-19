@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LedgerMatch.Core.Domain;
 
 /// <summary>
@@ -12,11 +14,13 @@ public sealed record BookEntry(
     string Description,
     long? ClearedTxnId) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => YearMonth.Of(EntryDate);
 }
 
 /// <summary>Ending balance printed on the bank statement, entered by the user to check the import is complete.</summary>
 public sealed record StatementBalance(long Id, long AccountId, YearMonth Month, Money EndingBalance) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => Month;
 }

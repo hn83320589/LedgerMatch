@@ -29,6 +29,8 @@ public sealed partial class ReceiptsViewModel : PageViewModel
 
     public ObservableCollection<ReceiptItem> Items { get; } = [];
 
+    public bool IsEditable => !Session.IsCurrentMonthClosed;
+
     [ObservableProperty]
     private bool onlyUnmatched;
 
@@ -65,6 +67,7 @@ public sealed partial class ReceiptsViewModel : PageViewModel
     public void Refresh()
     {
         var selectedId = Selected?.Receipt.Id;
+        OnPropertyChanged(nameof(IsEditable));
         Items.Clear();
         if (Session.CurrentAccount is not { } account)
         {

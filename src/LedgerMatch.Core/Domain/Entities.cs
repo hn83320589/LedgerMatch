@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LedgerMatch.Core.Domain;
 
 /// <summary>Anything persisted through a <see cref="Persistence.ChangeSet"/>. Ids come from <see cref="Persistence.ILedgerStore.ReserveIds"/>.</summary>
@@ -43,8 +45,10 @@ public sealed record BankTransaction(
     ClassificationSource ClassifiedBy,
     bool BookConfirmed) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public bool IsDeposit => Amount.IsPositive;
 
+    [JsonIgnore]
     public YearMonth LockPeriod => PostingPeriod;
 }
 

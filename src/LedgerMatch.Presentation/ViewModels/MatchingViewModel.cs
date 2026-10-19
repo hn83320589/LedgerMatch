@@ -112,11 +112,13 @@ public sealed partial class MatchingViewModel : PageViewModel
         }
 
         var month = Session.CurrentMonth;
-        foreach (var m in Session.Queries.GetMatches(account.Id, month))
+        var items = Session.Queries.GetMatches(account.Id, month).Select(m => new MatchItem(
+            m,
+            Session.Queries.GetTransaction(m.DepositTxnId)!,
+            Session.Queries.GetMatchLinks(m.Id).Select(l => Session.Queries.GetReceipt(l.ReceiptId)!).ToList()));
+        foreach (var item in items.OrderBy(i => i.Deposit.TxnDate).ThenBy(i => i.Deposit.Id))
         {
-            var deposit = Session.Queries.GetTransaction(m.DepositTxnId)!;
-            var receipts = Session.Queries.GetMatchLinks(m.Id).Select(l => Session.Queries.GetReceipt(l.ReceiptId)!).ToList();
-            Matches.Add(new MatchItem(m, deposit, receipts));
+            Matches.Add(item);
         }
 
         foreach (var d in Session.Queries.GetUnmatchedDeposits(account.Id, month))

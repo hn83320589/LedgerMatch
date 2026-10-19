@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LedgerMatch.Core.Domain;
 
 /// <summary>A receipt (收款單) the owner issued; the book-side record of money expected in the given account.</summary>
@@ -11,6 +13,7 @@ public sealed record Receipt(
     string? Note,
     long? ImportBatchId) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => YearMonth.Of(IssueDate);
 }
 
@@ -41,10 +44,12 @@ public sealed record Match(
     Money Fee,
     string? Note) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => Period;
 }
 
 public sealed record MatchLink(long Id, long MatchId, long ReceiptId, YearMonth Period) : IEntity, IPeriodLocked
 {
+    [JsonIgnore]
     public YearMonth LockPeriod => Period;
 }

@@ -12,7 +12,7 @@ public sealed partial class SqliteLedgerStore : ILedgerQueries
 
     public MappingProfile? GetProfile(long id) => Find<MappingProfile>(id);
 
-    public IReadOnlyList<Account> GetAccounts() => Query(EntityMaps.Account, "ORDER BY name");
+    public IReadOnlyList<Account> GetAccounts() => Query(EntityMaps.Account, "ORDER BY id");
 
     public Account? GetAccount(long id) => Find<Account>(id);
 

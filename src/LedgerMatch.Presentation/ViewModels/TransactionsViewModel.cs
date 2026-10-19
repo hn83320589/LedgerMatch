@@ -111,6 +111,15 @@ public sealed partial class TransactionsViewModel : PageViewModel
 
     public bool IsEditable => !Session.IsCurrentMonthClosed;
 
+    /// <summary>Index into <see cref="StatusOptions"/> for the status ComboBox.</summary>
+    public int StatusIndex
+    {
+        get => (int)Status;
+        set => Status = (TransactionStatusFilter)Math.Max(0, value);
+    }
+
+    partial void OnStatusChanged(TransactionStatusFilter value) => OnPropertyChanged(nameof(StatusIndex));
+
     [RelayCommand]
     public Task ReloadAsync() => RunAsync(async () =>
     {
