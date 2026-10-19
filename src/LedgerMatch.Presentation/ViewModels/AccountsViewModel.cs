@@ -54,6 +54,14 @@ public sealed partial class AccountsViewModel : PageViewModel
         Replace(Accounts, Session.Queries.GetAccounts());
     }
 
+    partial void OnSelectedProfileChanged(MappingProfile? value)
+    {
+        if (value is not null)
+        {
+            Editor.Load(value);
+        }
+    }
+
     partial void OnSelectedAccountChanged(Account? value)
     {
         AccountName = value?.Name ?? string.Empty;

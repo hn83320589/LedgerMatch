@@ -328,3 +328,13 @@ ChangeSet { OperationName, List<RowChange{ Table, Key, Before(json?), After(json
 | M8 | Presentation ViewModel + 測試 | 21 |
 | M9 | WinUI 3 App 各頁面 | 實測項 |
 | M10 | DataGen、效能測試、README（截圖、演算法、數據、取捨、限制）、win-x64 publish artifact | 19, 22, 23 |
+
+---
+
+## 10. 實作時的調整（相對於 v1.0 設計）
+
+- 收款單設定檔新增選用的「入帳帳戶」欄：一份收款單 CSV 可以涵蓋多個帳戶；沒有這一欄時，歸入匯入時選擇的帳戶。
+- 帳面分錄（book_entry）與對帳單期末餘額（statement_balance）放在 schema V002，同時用來驗證真實的 V1 → V2 升級。
+- 無收款單的入帳（例如利息）可以「直接列入帳面」（`BankTransaction.BookConfirmed`）。這類入帳與已兌現帳面分錄的交易不參與配對。
+- 效能測試專案命名為 `LedgerMatch.Perf.Tests`，以 `Category=Perf` 區分，CI 中獨立執行。
+- 演算法細節、預設參數、效能數據與已知限制以 README 為準。
