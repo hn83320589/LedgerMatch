@@ -157,8 +157,50 @@ internal static class EntityMaps
         ],
         r => new Setting(r.Long("id"), r.Str("key"), r.Str("value_json")));
 
+    public static readonly TableMap<Category> Category = new(
+        "category",
+        [
+            ("id", e => e.Id),
+            ("name", e => e.Name),
+            ("is_system", e => e.IsSystem),
+        ],
+        r => new Category(r.Long("id"), r.Str("name"), r.Bool("is_system")));
+
+    public static readonly TableMap<SplitLine> SplitLine = new(
+        "split_line",
+        [
+            ("id", e => e.Id),
+            ("txn_id", e => e.TxnId),
+            ("seq", e => e.Seq),
+            ("category_id", e => e.CategoryId),
+            ("amount_cents", e => e.Amount),
+            ("weight", e => e.Weight?.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            ("period", e => e.Period),
+        ],
+        r => new SplitLine(
+            r.Long("id"), r.Long("txn_id"), r.Int("seq"), r.Long("category_id"), r.Money("amount_cents"),
+            r.NStr("weight") is { } w ? decimal.Parse(w, System.Globalization.CultureInfo.InvariantCulture) : null, r.Month("period")));
+
+    public static readonly TableMap<Rule> Rule = new(
+        "rule",
+        [
+            ("id", e => e.Id),
+            ("name", e => e.Name),
+            ("priority", e => e.Priority),
+            ("desc_contains", e => e.DescriptionContains),
+            ("desc_regex", e => e.DescriptionRegex),
+            ("min_cents", e => e.MinAmount),
+            ("max_cents", e => e.MaxAmount),
+            ("account_id", e => e.AccountId),
+            ("category_id", e => e.CategoryId),
+            ("enabled", e => e.Enabled),
+        ],
+        r => new Rule(
+            r.Long("id"), r.Str("name"), r.Int("priority"), r.NStr("desc_contains"), r.NStr("desc_regex"), r.NMoney("min_cents"),
+            r.NMoney("max_cents"), r.NLong("account_id"), r.Long("category_id"), r.Bool("enabled")));
+
     public static readonly IReadOnlyDictionary<Type, ITableMap> ByType =
-        new ITableMap[] { Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent, Receipt, Match, MatchLink, Setting }
+        new ITableMap[] { Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent, Receipt, Match, MatchLink, Setting, Category, SplitLine, Rule }
             .ToDictionary(m => m.EntityType);
 
     public static BankTransaction ReadBankTransaction(Microsoft.Data.Sqlite.SqliteDataReader r) => new(

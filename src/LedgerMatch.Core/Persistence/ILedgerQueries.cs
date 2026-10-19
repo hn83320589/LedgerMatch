@@ -48,4 +48,21 @@ public interface ILedgerQueries
 
     /// <summary>Matches whose deposit belongs to the account and is posted in the period.</summary>
     IReadOnlyList<Match> GetMatches(long accountId, YearMonth period);
+
+    IReadOnlyList<TransactionRow> FindTransactions(TransactionFilter filter, TransactionCursor? after = null, int take = int.MaxValue);
+
+    int CountTransactions(TransactionFilter filter);
+
+    IReadOnlyList<Category> GetCategories();
+
+    Category? GetCategory(long id);
+
+    /// <summary>True when a transaction, split line or rule refers to the category.</summary>
+    bool IsCategoryInUse(long categoryId);
+
+    IReadOnlyList<SplitLine> GetSplitLines(long txnId);
+
+    IReadOnlyList<Rule> GetRules();
+
+    Rule? GetRule(long id);
 }

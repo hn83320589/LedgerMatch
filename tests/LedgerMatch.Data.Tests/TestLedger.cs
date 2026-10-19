@@ -1,4 +1,5 @@
 using LedgerMatch.Core;
+using LedgerMatch.Core.Classification;
 using LedgerMatch.Core.Domain;
 using LedgerMatch.Core.History;
 using LedgerMatch.Core.Importing;
@@ -40,6 +41,12 @@ public sealed class TestLedger : IDisposable
 
     public MatchingService Matching { get; private set; } = null!;
 
+    public CategoryService Categories { get; private set; } = null!;
+
+    public ClassificationService Classification { get; private set; } = null!;
+
+    public RuleService Rules { get; private set; } = null!;
+
     /// <summary>Simulates closing and restarting the app on the same file.</summary>
     public void Reopen()
     {
@@ -52,6 +59,9 @@ public sealed class TestLedger : IDisposable
         Settings = new SettingsService(Store, Store, History);
         Receipts = new ReceiptService(Store, Store, Executor, History, Time);
         Matching = new MatchingService(Store, Store, History, Settings);
+        Categories = new CategoryService(Store, Store, History);
+        Classification = new ClassificationService(Store, Store, History);
+        Rules = new RuleService(Store, Store, History);
     }
 
     public Account CreateAccount(MappingProfile profile, string name = "測試帳戶", long openingCents = 0)
