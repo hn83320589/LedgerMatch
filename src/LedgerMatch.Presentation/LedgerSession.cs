@@ -20,6 +20,8 @@ namespace LedgerMatch.Presentation;
 /// </summary>
 public sealed partial class LedgerSession : ObservableObject
 {
+    private readonly SynchronizationContext? _uiContext;
+
     public LedgerSession(ILedgerStore store, ILedgerQueries queries, TimeProvider time)
     {
         Store = store;
@@ -38,7 +40,9 @@ public sealed partial class LedgerSession : ObservableObject
         Periods = new PeriodService(store, queries, Executor, History, time);
         Books = new BookService(store, queries, History);
         Reconciliation = new ReconciliationService(queries, time);
-        History.Changed += (_, _) => NotifyDataChanged();
+        // Background work (matching, imports) commits on worker threads; listeners update UI-bound collections.
+        _uiContext = SynchronizationContext.Current;
+        History.Changed += (_, _) => OnUiThread(NotifyDataChanged);
         currentMonth = YearMonth.Of(DateOnly.FromDateTime(time.GetLocalNow().DateTime));
     }
 
@@ -89,6 +93,18 @@ public sealed partial class LedgerSession : ObservableObject
     {
         OnPropertyChanged(nameof(IsCurrentMonthClosed));
         DataChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnUiThread(Action action)
+    {
+        if (_uiContext is null || SynchronizationContext.Current == _uiContext)
+        {
+            action();
+        }
+        else
+        {
+            _uiContext.Post(_ => action(), null);
+        }
     }
 
     partial void OnCurrentMonthChanged(YearMonth value) => OnPropertyChanged(nameof(IsCurrentMonthClosed));

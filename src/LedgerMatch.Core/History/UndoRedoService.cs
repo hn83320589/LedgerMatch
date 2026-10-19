@@ -16,6 +16,9 @@ public sealed class UndoRedoService
     private readonly LinkedList<ChangeSet> _undo = new();
     private readonly Stack<ChangeSet> _redo = new();
 
+    // Background operations (e.g. a matching run) may commit while the UI thread undoes; steps must not interleave.
+    private readonly Lock _gate = new();
+
     public UndoRedoService(LedgerCommandExecutor executor, int capacity = DefaultCapacity)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(capacity, MinimumCapacity);
@@ -45,44 +48,60 @@ public sealed class UndoRedoService
             return;
         }
 
-        _executor.Execute(changeSet);
-        _undo.AddLast(changeSet);
-        if (_undo.Count > Capacity)
+        lock (_gate)
         {
-            _undo.RemoveFirst();
+            _executor.Execute(changeSet);
+            _undo.AddLast(changeSet);
+            if (_undo.Count > Capacity)
+            {
+                _undo.RemoveFirst();
+            }
+
+            _redo.Clear();
         }
 
-        _redo.Clear();
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Undo()
     {
-        var step = _undo.Last?.Value ?? throw new InvalidOperationException("沒有可以復原的操作。");
-        _executor.Execute(step.Invert($"復原：{step.Operation}"));
-        _undo.RemoveLast();
-        _redo.Push(step);
+        lock (_gate)
+        {
+            var step = _undo.Last?.Value ?? throw new InvalidOperationException("沒有可以復原的操作。");
+            _executor.Execute(step.Invert($"復原：{step.Operation}"));
+            _undo.RemoveLast();
+            _redo.Push(step);
+        }
+
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     public void Redo()
     {
-        if (!_redo.TryPeek(out var step))
+        lock (_gate)
         {
-            throw new InvalidOperationException("沒有可以重做的操作。");
+            if (!_redo.TryPeek(out var step))
+            {
+                throw new InvalidOperationException("沒有可以重做的操作。");
+            }
+
+            _executor.Execute(step with { Operation = $"重做：{step.Operation}" });
+            _redo.Pop();
+            _undo.AddLast(step);
         }
 
-        _executor.Execute(step with { Operation = $"重做：{step.Operation}" });
-        _redo.Pop();
-        _undo.AddLast(step);
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Drops history, e.g. after an operation that cannot be undone changed the same rows.</summary>
     public void Clear()
     {
-        _undo.Clear();
-        _redo.Clear();
+        lock (_gate)
+        {
+            _undo.Clear();
+            _redo.Clear();
+        }
+
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }
