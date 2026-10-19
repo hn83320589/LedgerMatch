@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test-publish:
+    runs-on: windows-latest
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore LedgerMatch.sln
+
+      - name: Build
+        run: dotnet build LedgerMatch.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test LedgerMatch.sln -c Release --no-build --filter "Category!=Perf" --logger trx --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+      - name: Publish win-x64
+        run: dotnet publish src/LedgerMatch.App/LedgerMatch.App.csproj -c Release -r win-x64 --self-contained -o artifacts/publish/win-x64
+
+      - name: Upload win-x64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: LedgerMatch-win-x64
+          path: artifacts/publish/win-x64

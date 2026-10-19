@@ -1,0 +1,6 @@
+* text=auto
+*.cs text eol=crlf
+*.xaml text eol=crlf
+# Sample CSVs are byte-exact fixtures (UTF-8/Big5, specific line endings)
+samples/** -text
+**/Fixtures/** -text
