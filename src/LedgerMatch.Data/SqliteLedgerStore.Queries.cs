@@ -32,8 +32,9 @@ public sealed partial class SqliteLedgerStore : ILedgerQueries
     public IReadOnlyList<BankTransaction> GetUnmatchedDeposits(long accountId, YearMonth period) =>
         Query(
             EntityMaps.BankTransaction,
-            "WHERE account_id = @a AND posting_period = @p AND amount_cents > 0 " +
-            "AND NOT EXISTS (SELECT 1 FROM match m WHERE m.deposit_txn_id = bank_txn.id) ORDER BY txn_date, id",
+            "WHERE account_id = @a AND posting_period = @p AND amount_cents > 0 AND book_confirmed = 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM match m WHERE m.deposit_txn_id = bank_txn.id) " +
+            "AND NOT EXISTS (SELECT 1 FROM book_entry b WHERE b.cleared_txn_id = bank_txn.id) ORDER BY txn_date, id",
             ("@a", accountId),
             ("@p", period));
 

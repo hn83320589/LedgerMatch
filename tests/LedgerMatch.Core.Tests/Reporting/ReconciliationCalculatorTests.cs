@@ -20,7 +20,7 @@ public class ReconciliationCalculatorTests
     private static MatchWithLinks M(long id, long deposit, MatchConfidence confidence, long feeCents, params long[] receipts) =>
         new(new Match(id, deposit, March, MatchKind.Manual, confidence, Money.FromCents(feeCents), null), receipts);
 
-    /// <summary>The hand-calculated example documented in samples/expected-results.md (section 甲銀行 2026-03 計算範例).</summary>
+    /// <summary>The hand-calculated example documented in samples/expected-results.md, section 4 (計算範例).</summary>
     internal static ReconciliationData HandExample(MatchConfidence t2Confidence = MatchConfidence.Suggested) => new(
         Account,
         March,

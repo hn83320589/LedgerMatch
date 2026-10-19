@@ -49,12 +49,18 @@ public sealed class ReceiptService(ILedgerStore store, ILedgerQueries queries, L
 
     /// <summary>
     /// Imports receipts. A receipt number that already exists with identical content is a skipped duplicate;
-    /// with different content, or dated in a closed month, the row is reported as an error.
+    /// with different content, or dated in a closed month, the row is reported as an error. When the profile has
+    /// an account column, each row goes to the account it names; otherwise to <paramref name="defaultAccountId"/>.
     /// </summary>
-    public ReceiptImportSummary Import(long accountId, long profileId, Stream file, string fileName)
+    public ReceiptImportSummary Import(long? defaultAccountId, long profileId, Stream file, string fileName)
     {
-        _ = queries.GetAccount(accountId) ?? throw new LedgerException($"找不到帳戶 #{accountId}。");
+        if (defaultAccountId is { } id0 && queries.GetAccount(id0) is null)
+        {
+            throw new LedgerException($"找不到帳戶 #{id0}。");
+        }
+
         var profile = queries.GetProfile(profileId) ?? throw new LedgerException($"找不到設定檔 #{profileId}。");
+        var accountsByName = queries.GetAccounts().ToDictionary(a => a.Name, a => a.Id, StringComparer.OrdinalIgnoreCase);
 
         using var buffer = new MemoryStream();
         file.CopyTo(buffer);
@@ -64,12 +70,31 @@ public sealed class ReceiptService(ILedgerStore store, ILedgerQueries queries, L
 
         var closed = store.GetClosedPeriods();
         var errors = parsed.Errors.ToList();
-        var toAdd = new List<ParsedReceiptRow>();
+        var toAdd = new List<(ParsedReceiptRow Row, long AccountId)>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var skipped = 0;
 
         foreach (var row in parsed.Rows)
         {
+            long accountId;
+            if (row.AccountName is { } name)
+            {
+                if (!accountsByName.TryGetValue(name, out accountId))
+                {
+                    errors.Add(new RowError(row.LineNumber, $"找不到名為「{name}」的帳戶"));
+                    continue;
+                }
+            }
+            else if (defaultAccountId is { } fallback)
+            {
+                accountId = fallback;
+            }
+            else
+            {
+                errors.Add(new RowError(row.LineNumber, "未指定入帳帳戶"));
+                continue;
+            }
+
             var existing = queries.GetReceiptByNumber(row.ReceiptNo);
             if (existing is not null || !seen.Add(row.ReceiptNo))
             {
@@ -90,15 +115,15 @@ public sealed class ReceiptService(ILedgerStore store, ILedgerQueries queries, L
             }
             else
             {
-                toAdd.Add(row);
+                toAdd.Add((row, accountId));
             }
         }
 
         errors.Sort((a, b) => a.LineNumber.CompareTo(b.LineNumber));
         var id = store.ReserveIds(1 + toAdd.Count);
-        var batch = new ImportBatch(id, ImportKind.Receipt, accountId, fileName, sha256, time.GetUtcNow(), toAdd.Count, skipped, errors.Count, 0);
+        var batch = new ImportBatch(id, ImportKind.Receipt, defaultAccountId, fileName, sha256, time.GetUtcNow(), toAdd.Count, skipped, errors.Count, 0);
         var changes = new ChangeSetBuilder($"匯入收款單 {fileName}").Insert(batch);
-        foreach (var row in toAdd)
+        foreach (var (row, accountId) in toAdd)
         {
             changes.Insert(new Receipt(++id, accountId, row.IssueDate, row.Customer, row.ReceiptNo, row.Amount, row.Note, batch.Id));
         }

@@ -90,6 +90,9 @@ public sealed record MappingProfile : IEntity
 
     public ColumnRef? ReceiptNo { get; init; }
 
+    /// <summary>Receipts only, optional: account name per row; rows without it go to the account chosen at import.</summary>
+    public ColumnRef? AccountName { get; init; }
+
     /// <summary>Grouping separator to strip, or null when amounts never contain one.</summary>
     public char? ThousandsSeparator { get; init; } = ',';
 
@@ -169,7 +172,7 @@ public sealed record MappingProfile : IEntity
     }
 
     internal IEnumerable<ColumnRef> AllColumns() =>
-        new[] { Date, Amount, Debit, Credit, Description, Serial, Note, Customer, ReceiptNo }.OfType<ColumnRef>();
+        new[] { Date, Amount, Debit, Credit, Description, Serial, Note, Customer, ReceiptNo, AccountName }.OfType<ColumnRef>();
 
     private static void RequireColumn(List<string> errors, ColumnRef? column, string label)
     {

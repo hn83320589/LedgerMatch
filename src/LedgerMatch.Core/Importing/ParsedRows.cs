@@ -16,7 +16,8 @@ public sealed record ParsedReceiptRow(
     string Customer,
     string ReceiptNo,
     Money Amount,
-    string? Note);
+    string? Note,
+    string? AccountName = null);
 
 public sealed record ParseResult<T>(IReadOnlyList<T> Rows, IReadOnlyList<RowError> Errors);
 

@@ -123,6 +123,28 @@ public class LedgerDatabaseTests : IDisposable
     }
 
     [Fact]
+    public void RealVersionOneDatabase_UpgradesToLatestKeepingData()
+    {
+        var v1 = LedgerDatabase.BuiltInMigrations.Take(1).ToList();
+        _db.Open(v1);
+        using (var connection = new SqliteConnection($"Data Source={_db.Path};Pooling=False"))
+        {
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO category (id, name, is_system) VALUES (5000, '舊版科目', 0);";
+            cmd.ExecuteNonQuery();
+        }
+
+        var upgraded = _db.Open();
+
+        Assert.Equal(LedgerDatabase.LatestVersion, upgraded.SchemaVersion);
+        Assert.True(File.Exists(upgraded.BackupPath));
+        var store = new SqliteLedgerStore(upgraded);
+        Assert.Equal("舊版科目", store.GetCategory(5000)!.Name);
+        Assert.Empty(store.GetBookEntries(1)); // V002 table exists
+    }
+
+    [Fact]
     public void FailingMigration_RollsBackThatVersion()
     {
         Migration v1 = new(1, "init", "CREATE TABLE note (id INTEGER PRIMARY KEY);");

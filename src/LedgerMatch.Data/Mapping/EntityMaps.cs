@@ -199,8 +199,34 @@ internal static class EntityMaps
             r.Long("id"), r.Str("name"), r.Int("priority"), r.NStr("desc_contains"), r.NStr("desc_regex"), r.NMoney("min_cents"),
             r.NMoney("max_cents"), r.NLong("account_id"), r.Long("category_id"), r.Bool("enabled")));
 
+    public static readonly TableMap<BookEntry> BookEntry = new(
+        "book_entry",
+        [
+            ("id", e => e.Id),
+            ("account_id", e => e.AccountId),
+            ("entry_date", e => e.EntryDate),
+            ("amount_cents", e => e.Amount),
+            ("description", e => e.Description),
+            ("cleared_txn_id", e => e.ClearedTxnId),
+        ],
+        r => new BookEntry(r.Long("id"), r.Long("account_id"), r.Date("entry_date"), r.Money("amount_cents"), r.Str("description"), r.NLong("cleared_txn_id")));
+
+    public static readonly TableMap<StatementBalance> StatementBalance = new(
+        "statement_balance",
+        [
+            ("id", e => e.Id),
+            ("account_id", e => e.AccountId),
+            ("month", e => e.Month),
+            ("ending_balance_cents", e => e.EndingBalance),
+        ],
+        r => new StatementBalance(r.Long("id"), r.Long("account_id"), r.Month("month"), r.Money("ending_balance_cents")));
+
     public static readonly IReadOnlyDictionary<Type, ITableMap> ByType =
-        new ITableMap[] { Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent, Receipt, Match, MatchLink, Setting, Category, SplitLine, Rule }
+        new ITableMap[]
+        {
+            Profile, Account, ImportBatch, BankTransaction, PendingItem, Period, PeriodEvent, Receipt, Match, MatchLink, Setting, Category, SplitLine, Rule,
+            BookEntry, StatementBalance,
+        }
             .ToDictionary(m => m.EntityType);
 
     public static BankTransaction ReadBankTransaction(Microsoft.Data.Sqlite.SqliteDataReader r) => new(

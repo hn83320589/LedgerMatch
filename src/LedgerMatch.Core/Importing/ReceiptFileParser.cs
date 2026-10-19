@@ -37,7 +37,8 @@ public static class ReceiptFileParser
             || !table.TryGet(record, profile.Customer, out var customer, out error)
             || !table.TryGet(record, profile.ReceiptNo, out var receiptNo, out error)
             || !table.TryGet(record, profile.Amount, out var amountText, out error)
-            || !table.TryGet(record, profile.Note, out var note, out error))
+            || !table.TryGet(record, profile.Note, out var note, out error)
+            || !table.TryGet(record, profile.AccountName, out var accountName, out error))
         {
             return false;
         }
@@ -66,7 +67,8 @@ public static class ReceiptFileParser
             return false;
         }
 
-        row = new ParsedReceiptRow(record.LineNumber, date, customer, receiptNo, amount, string.IsNullOrEmpty(note) ? null : note);
+        row = new ParsedReceiptRow(
+            record.LineNumber, date, customer, receiptNo, amount, string.IsNullOrEmpty(note) ? null : note, string.IsNullOrEmpty(accountName) ? null : accountName);
         return true;
     }
 }

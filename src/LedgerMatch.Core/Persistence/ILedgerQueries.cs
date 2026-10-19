@@ -75,4 +75,15 @@ public interface ILedgerQueries
     PendingItem? GetPendingItem(long id);
 
     IReadOnlyList<PendingItem> GetPendingItems(PendingStatus? status = null);
+
+    IReadOnlyList<BookEntry> GetBookEntries(long accountId);
+
+    BookEntry? GetBookEntry(long id);
+
+    BookEntry? GetBookEntryClearedBy(long txnId);
+
+    StatementBalance? GetStatementBalance(long accountId, YearMonth month);
+
+    /// <summary>All rows the reconciliation of <paramref name="month"/> depends on.</summary>
+    Reporting.ReconciliationData GetReconciliationData(long accountId, YearMonth month);
 }

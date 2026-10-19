@@ -117,6 +117,11 @@ public sealed class MatchingService(ILedgerStore store, ILedgerQueries queries, 
             throw new LedgerException("這筆入帳已有配對，請先解除。");
         }
 
+        if (deposit.BookConfirmed || queries.GetBookEntryClearedBy(deposit.Id) is not null)
+        {
+            throw new LedgerException("這筆入帳已直接列入帳面或對應帳面分錄，不能再與收款單配對。");
+        }
+
         if (receiptIds.Count == 0 || receiptIds.Distinct().Count() != receiptIds.Count)
         {
             throw new LedgerException("請選擇至少一張不重複的收款單。");
