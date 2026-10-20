@@ -9,7 +9,7 @@
 
 | 項目 | 結果 |
 |---|---|
-| 自動化測試 | **326 / 326 通過**，0 失敗、0 略過 |
+| 自動化測試 | **338 / 338 通過**，0 失敗、0 略過 |
 | 驗收標準 | **23 / 23 通過**（第 1–22 條本機驗證；第 23 條由 GitHub Actions 驗證，見 §5） |
 | 實機操作 | 用 `dotnet publish -r win-x64 --self-contained` 的發佈檔實際開啟範例資料庫，10 個頁面與錯誤情境都正常 |
 
@@ -24,11 +24,11 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 
 | 測試專案 | 案例數 | 結果 | 執行時間 |
 |---|---:|---|---:|
-| LedgerMatch.Core.Tests | 174 | 全數通過 | 0.4 秒 |
-| LedgerMatch.Data.Tests | 100 | 全數通過 | 4 秒 |
+| LedgerMatch.Core.Tests | 183 | 全數通過 | 0.4 秒 |
+| LedgerMatch.Data.Tests | 103 | 全數通過 | 4 秒 |
 | LedgerMatch.Presentation.Tests | 48 | 全數通過 | 3 秒 |
 | LedgerMatch.Perf.Tests（`Category=Perf`） | 4 | 全數通過 | 7.8 秒 |
-| **合計** | **326** | **全數通過** | |
+| **合計** | **338** | **全數通過** | |
 
 <details>
 <summary>各測試類別的案例數</summary>
@@ -37,19 +37,19 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 |---|---:|---|---:|
 | Core · AmountParserTests | 18 | Data · SqliteLedgerStoreTests | 11 |
 | Core · DateParserTests | 12 | Data · LedgerDatabaseTests | 10 |
-| Core · CsvReaderTests | 7 | Data · StatementImportTests | 12 |
+| Core · CsvReaderTests | 7 | Data · StatementImportTests | 14 |
 | Core · MappingProfileTests | 6 | Data · SetupServiceTests | 7 |
 | Core · StatementFileParserTests | 14 | Data · ReceiptServiceTests | 6 |
 | Core · ReceiptFileParserTests | 2 | Data · MatchingServiceTests | 16 |
-| Core · ImportPlannerTests | 8 | Data · ClassificationTests | 14 |
+| Core · ImportPlannerTests | 10 | Data · ClassificationTests | 14 |
 | Core · MatchingEngineTests | 35 | Data · UndoRedoIntegrationTests | 2 |
 | Core · MatchingEnginePropertyTests | 1 | Data · PeriodServiceTests | 8 |
-| Core · AllocationTests | 8 | Data · BookServiceTests | 5 |
+| Core · AllocationTests | 8 | Data · BookServiceTests | 6 |
 | Core · RuleEngineTests | 8 | Data · AuditTrailTests | 4 |
 | Core · UndoRedoServiceTests | 9 | Data · SampleDataTests | 5 |
 | Core · LedgerCommandExecutorTests | 7 | Presentation · AccountsAndProfilesTests | 8 |
-| Core · ReconciliationCalculatorTests | 7 | Presentation · ImportViewModelTests | 5 |
-| Core · ReconciliationExportTests | 12 | Presentation · TransactionsViewModelTests | 7 |
+| Core · ReconciliationCalculatorTests | 8 | Presentation · ImportViewModelTests | 5 |
+| Core · ReconciliationExportTests | 18 | Presentation · TransactionsViewModelTests | 7 |
 | Core · MoneyTests | 13 | Presentation · MatchingAndReceiptsTests | 9 |
 | Core · YearMonthTests | 6 | Presentation · RulesPeriodsReportsTests | 14 |
 | Core · NoFloatingPointMoneyTests | 1 | Presentation · ShellViewModelTests | 5 |
@@ -65,6 +65,7 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 | `MatchingEnginePropertyTests` | 200 | 收款單不重複使用、各階段金額規則、打亂輸入與重新編號後結果相同 |
 | `AllocationTests.Property_SharesAreCentExactStableAndFair` | 2,000 | 拆分總和恆等於原金額、結果穩定、每份與理想值差距不超過 1 分、權重 0 分到 0 |
 | `ReconciliationCalculatorTests.Property_AdjustedBalancesAlwaysAgree` | 500 | 任意資料下調整後銀行餘額 = 調整後帳面餘額 |
+| `ReconciliationCalculatorTests.Property_AdjustedBalanceEqualsCashMovedByMonthEnd` | 1,000 | 調整後餘額等於獨立現金模型算出的「期初＋到月底實際動的現金」 |
 
 ### 效能測試（十萬筆資料庫，Release）
 
@@ -72,11 +73,11 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 
 | 作業 | README 承諾上限 | 本次實測 |
 |---|---:|---:|
-| 匯入一個月 5,000 列 | 10 秒 | 0.156 秒 |
-| 同一檔案重新匯入（全部判定重複） | 10 秒 | 0.030 秒 |
-| 配對一個月 2,381 筆入帳（確認 1,459、建議 83） | 15 秒 | 0.334 秒 |
+| 匯入一個月 5,000 列 | 10 秒 | 0.211 秒 |
+| 同一檔案重新匯入（全部判定重複） | 10 秒 | 0.060 秒 |
+| 配對一個月 2,381 筆入帳（確認 1,459、建議 83） | 15 秒 | 0.303 秒 |
 | 配對進行中查詢交易清單（6 次） | 0.5 秒／頁 | 最慢 31 ms |
-| 關鍵字篩選全部月份（5,694 筆）+ 兩頁 | 1 秒 | 37 ms |
+| 關鍵字篩選全部月份（5,694 筆）+ 兩頁 | 1 秒 | 46 ms |
 
 ## 3. 實機驗證
 
@@ -111,11 +112,11 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 | 14 | 復原／重做 ≥30 層，涵蓋配對、解除配對、拆分、套用規則，統計與餘額同步 | 單元測試 | `UndoRedoServiceTests`（9）、`UndoRedoIntegrationTests.EveryOperationKind_UndoesAndRedoesWithStatisticsAndBalances`（每種操作逐步復原／重做並比對統計與餘額）、`ThirtyFiveSteps_CanAllBeUndone`（35 層） | ✅ |
 | 15 | 結帳後不可修改（核心拒絕、UI 停用）；晚到交易進待處理；重開帳需理由 | 單元測試 + 實測 | `PeriodServiceTests`（8）、`LedgerCommandExecutorTests`、資料庫觸發器測試；§3 實測結帳後按鈕停用 | ✅ |
 | 16 | 稽核涵蓋所有修改操作並含前後值；應用程式內無法修改或刪除，且有測試證明 | 單元測試 | `AuditTrailTests`（4）、`SqliteLedgerStoreTests.AuditLog_RejectsModificationEvenThroughRawSql`（即使直接執行 SQL 的 UPDATE／DELETE 也被觸發器拒絕，3 種語句） | ✅ |
-| 17 | 調節表與範例資料手算值相符；在途存款與未兌現判定正確 | 單元測試 | `SampleDataTests.Reconciliation_*`、`HandCalculatedExample_*`、`samples/expected-results.md` | ✅ |
+| 17 | 調節表與範例資料手算值相符；在途存款與未兌現判定正確 | 單元測試 | `SampleDataTests.Reconciliation_*`、`HandCalculatedExample_*`、`samples/expected-results.md`；獨立現金模型性質測試（1,000 組）驗證各項歸屬 | ✅ |
 | 18 | CSV（BOM）與 HTML 內容與畫面一致、跳脫正確；HTML 列印為單頁 A4 | 測試 + 實測 | `ReconciliationExportTests`（12）；§3 Edge 列印 2 份皆 1 頁 A4、CSV 含 BOM | ✅ |
 | 19 | 十萬筆資料庫匯入一個月與配對在 README 時間內完成，背景作業時 UI 可操作 | 效能測試 + 實測 | `LargeDatabaseTests`（4），見 §2；配對期間同時查詢清單最慢 31 ms | ✅ |
 | 20 | 版本過新或損毀時顯示明確訊息不崩潰；舊版可升級 | 單元測試 | `LedgerDatabaseTests`（10：過新、亂碼檔、頁面損毀、非本程式資料庫、V1→V2 升級、失敗 migration 回滾）；§3 實測說明視窗 | ✅ |
-| 21 | 核心與 ViewModel 單元測試 ≥120 個（含性質測試），`dotnet test` 全數通過 | 執行測試 | 326 個全數通過（Core 174 + Data 100 + Presentation 48 + Perf 4） | ✅ |
+| 21 | 核心與 ViewModel 單元測試 ≥120 個（含性質測試），`dotnet test` 全數通過 | 執行測試 | 338 個全數通過（Core 183 + Data 103 + Presentation 48 + Perf 4） | ✅ |
 | 22 | README 含建置、截圖、架構、三個演算法、效能數據、設計取捨、已知限制 | 檢視 README | README 各章節齊全，8 張截圖在 `docs/images/` | ✅ |
 | 23 | GitHub Actions 在 Windows runner 建置測試、綠燈、README 徽章、上傳 win-x64 artifact | 檢視 Actions | `.github/workflows/ci.yml`；run 39347949564 全部步驟成功，artifact `LedgerMatch-win-x64` 已上傳，見 §5 | ✅ |
 
@@ -136,6 +137,18 @@ README 的徽章指向這個 workflow。
 | 問題 | 原因 | 處理 |
 |---|---|---|
 | WinUI 專案 `src/LedgerMatch.App` 先前沒有被 commit | `.gitignore` 的 macOS 規則 `*.app` 在 Windows（不分大小寫）下符合 `LedgerMatch.App` 目錄 | 移除該規則，App 專案一併納入版本控制。從乾淨狀態重新組建、測試、發佈並實機操作確認 |
+
+### 6.1 程式碼審查後的修正（2026-10-20）
+
+外部 code review 指出的問題，每項都先寫出會失敗的測試，再修正：
+
+| 問題 | 重現 | 修正 | 新測試 |
+|---|---|---|---|
+| 有序號的對帳單，序號已存在於**檔案日期範圍外**時，整批匯入失敗；範圍內則會把不同的交易當重複悄悄丟掉 | 既有 `000123`（2 月），匯入 3 月檔含同序號：違反 `(account_id, dedup_key)` UNIQUE 索引，整檔回滾，只顯示泛用的「資料與目前狀態衝突」 | 依 key 分批查詢既有資料，不限日期；同序號且日期、金額、摘要都相同才算重複，否則該列列為錯誤列（含行號、序號、既有交易內容），其餘列照常匯入。README 寫明「序號在帳戶內唯一」的假設 | `StatementImportTests.SerialUsedOutsideTheFileRange_*`、`SerialUsedInsideTheFileRange_*`、`ImportPlannerTests` 4 個 |
+| 調節表恆等式依構造成立，原本的性質測試抓不到「歸錯區段」 | 新增獨立現金模型的性質測試，第 2 組就失敗：已確認配對中有收款單在下月才開立時，已收到錢的收款單被列為在途存款，入帳又被列為帳面未記，兩邊各多算同一筆 | 已確認配對在入帳月份生效，整組收款單在入帳當月認列（與使用者確認的會計定義） | `ReconciliationCalculatorTests.Property_AdjustedBalanceEqualsCashMovedByMonthEnd`（1,000 組）、`ConfirmedMatch_IsBookedInTheDepositMonth_*`、`BookServiceTests.ConfirmedMatch_WithAReceiptIssuedNextMonth_*` |
+| CSV 文字欄可被注入 Excel 公式（對帳單摘要來自匯款人） | `=HYPERLINK(...)` 等原樣寫入 | 帳戶名稱、參考、說明、備註以 `= + - @`、Tab、CR 開頭時加上 `'`；金額、日期欄不變 | `ReconciliationExportTests.Csv_TextFromStatementsCannotBecomeAFormula_*`（5 組）、`Csv_SafeText_LeavesOrdinaryTextAlone` |
+
+修正後匯入改為依 key 查詢，效能測試的匯入 5,000 列為 0.21 秒、重新匯入為 0.06 秒（原 0.16／0.03 秒），仍遠低於 10 秒上限。
 
 ## 7. 未涵蓋或限制
 
