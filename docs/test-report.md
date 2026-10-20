@@ -10,7 +10,7 @@
 | 項目 | 結果 |
 |---|---|
 | 自動化測試 | **326 / 326 通過**，0 失敗、0 略過 |
-| 驗收標準 | 第 1–22 條在本機驗證通過；第 23 條（CI 綠燈）需推送到 GitHub 後由 Actions 判定，見 §5 |
+| 驗收標準 | **23 / 23 通過**（第 1–22 條本機驗證；第 23 條由 GitHub Actions 驗證，見 §5） |
 | 實機操作 | 用 `dotnet publish -r win-x64 --self-contained` 的發佈檔實際開啟範例資料庫，10 個頁面與錯誤情境都正常 |
 
 ## 2. 自動化測試結果
@@ -117,7 +117,7 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 | 20 | 版本過新或損毀時顯示明確訊息不崩潰；舊版可升級 | 單元測試 | `LedgerDatabaseTests`（10：過新、亂碼檔、頁面損毀、非本程式資料庫、V1→V2 升級、失敗 migration 回滾）；§3 實測說明視窗 | ✅ |
 | 21 | 核心與 ViewModel 單元測試 ≥120 個（含性質測試），`dotnet test` 全數通過 | 執行測試 | 326 個全數通過（Core 174 + Data 100 + Presentation 48 + Perf 4） | ✅ |
 | 22 | README 含建置、截圖、架構、三個演算法、效能數據、設計取捨、已知限制 | 檢視 README | README 各章節齊全，8 張截圖在 `docs/images/` | ✅ |
-| 23 | GitHub Actions 在 Windows runner 建置測試、綠燈、README 徽章、上傳 win-x64 artifact | 檢視 Actions | `.github/workflows/ci.yml`；推送後結果見 §5 | 推送後確認 |
+| 23 | GitHub Actions 在 Windows runner 建置測試、綠燈、README 徽章、上傳 win-x64 artifact | 檢視 Actions | `.github/workflows/ci.yml`；run 39347949564 全部步驟成功，artifact `LedgerMatch-win-x64` 已上傳，見 §5 | ✅ |
 
 ## 5. CI（驗收標準 23）
 
@@ -128,6 +128,8 @@ dotnet test tests/LedgerMatch.Perf.Tests -c Release --filter "Category=Perf"
 3. `dotnet publish -r win-x64 --self-contained`，以 `actions/upload-artifact` 上傳 `LedgerMatch-win-x64`
 
 README 的徽章指向這個 workflow。
+
+首次推送（commit `fedcd10`）的執行結果：[run 39347949564](https://github.com/hn83320589/LedgerMatch/actions/runs/39347949564) **success**。Restore、Build、Test、Performance tests、Upload test results、Publish win-x64、Upload win-x64 build 全部成功；artifact `LedgerMatch-win-x64`（86 MB，壓縮後）與 `test-results` 已上傳。
 
 ## 6. 測試過程中發現並修正的問題
 
