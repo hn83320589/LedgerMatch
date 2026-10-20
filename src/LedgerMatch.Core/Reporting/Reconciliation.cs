@@ -59,11 +59,12 @@ public sealed record ReconciliationReport(
 public static class ReconciliationCalculator
 {
     /// <remarks>
-    /// Book balance = opening + receipts issued ≤ month end + book entries dated ≤ month end
-    /// − fees of effective matches + bank lines confirmed into the book (withdrawals on import, deposits
-    /// confirmed directly) that are not already represented by a cleared book entry.
-    /// A confirmed match is effective at month end when its deposit is posted in or before the month and
-    /// all of its receipts were issued by month end; unconfirmed suggestions never count.
+    /// Book balance = opening + receipts issued ≤ month end + receipts of effective matches issued later
+    /// + book entries dated ≤ month end − fees of effective matches + bank lines confirmed into the book
+    /// (withdrawals on import, deposits confirmed directly) that are not already represented by a cleared book entry.
+    /// A confirmed match is effective at month end when its deposit is posted in or before the month: the cash has
+    /// arrived, so all of its receipts count in that month's book even if one was issued after month end.
+    /// Unconfirmed suggestions never count.
     /// </remarks>
     public static ReconciliationReport Compute(ReconciliationData data, DateTimeOffset generatedAt)
     {
@@ -71,16 +72,16 @@ public static class ReconciliationCalculator
         var monthEnd = month.LastDay;
         var txns = data.Transactions.Where(t => t.AccountId == data.Account.Id && t.PostingPeriod <= month).ToList();
         var txnIds = txns.Select(t => t.Id).ToHashSet();
-        var receipts = data.Receipts.Where(r => r.AccountId == data.Account.Id && r.IssueDate <= monthEnd).ToList();
-        var receiptIds = receipts.Select(r => r.Id).ToHashSet();
 
         var effective = data.Matches
             .Where(m => m.Match.Confidence == MatchConfidence.Confirmed
                 && m.Match.Period <= month
-                && txnIds.Contains(m.Match.DepositTxnId)
-                && m.ReceiptIds.All(receiptIds.Contains))
+                && txnIds.Contains(m.Match.DepositTxnId))
             .ToList();
         var clearedReceipts = effective.SelectMany(m => m.ReceiptIds).ToHashSet();
+        var receipts = data.Receipts
+            .Where(r => r.AccountId == data.Account.Id && (r.IssueDate <= monthEnd || clearedReceipts.Contains(r.Id)))
+            .ToList();
         var matchedDeposits = effective.Select(m => m.Match.DepositTxnId).ToHashSet();
         var suggested = data.Matches.Where(m => m.Match.Confidence == MatchConfidence.Suggested).Select(m => m.Match.DepositTxnId).ToHashSet();
 

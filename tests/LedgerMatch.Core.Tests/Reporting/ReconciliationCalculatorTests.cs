@@ -91,13 +91,20 @@ public class ReconciliationCalculatorTests
     }
 
     [Fact]
-    public void ReceiptIssuedAfterMonthEnd_MakesMatchIneffectiveForThatMonth()
+    public void ConfirmedMatch_IsBookedInTheDepositMonth_EvenWhenAReceiptIsIssuedLater()
     {
-        var data = HandExample() with { Matches = [M(21, 1, MatchConfidence.Confirmed, 0, 16)] };
+        // T1 (3/2, 1,200.00) paid R11 (3/1, 999.00) and R16 (4/1, 201.00): the cash arrived in March, so R11 must not
+        // be shown as still in transit, and the whole deposit is in the March book.
+        var data = HandExample() with
+        {
+            Receipts = [Rec(11, 1, 99_900), Rec(16, 1, 20_100, month: 4)],
+            Matches = [M(21, 1, MatchConfidence.Confirmed, 0, 11, 16)],
+        };
         var report = ReconciliationCalculator.Compute(data, Now);
 
-        Assert.Contains(report.BankOnlyDeposits.Items, i => i.Reference == "T1");
-        Assert.DoesNotContain(report.DepositsInTransit.Items, i => i.Reference == "R16");
+        Assert.DoesNotContain(report.BankOnlyDeposits.Items, i => i.Reference == "T1");
+        Assert.DoesNotContain(report.DepositsInTransit.Items, i => i.Reference is "R11" or "R16");
+        Assert.Equal(Account.OpeningBalance + Money.FromCents(120_000 - 2_000_000 - 300_000 + 80_000 - 150_000 + 10_000), report.BookBalance);
         Assert.True(report.IsBalanced);
     }
 
@@ -134,6 +141,189 @@ public class ReconciliationCalculatorTests
             var report = ReconciliationCalculator.Compute(data, Now);
             Assert.Equal(report.AdjustedBankBalance, report.AdjustedBookBalance);
         });
+    }
+
+    /// <summary>
+    /// Property with an independent oracle. The two adjusted balances agree by construction, so instead random
+    /// economic events are generated first (customer payments, cheques, manual book deposits, bank charges, ...),
+    /// each knowing how much cash it really moved by month end. The calculator's adjusted balance must equal
+    /// opening + that cash; an item put in the wrong section or counted on both sides breaks the equality.
+    /// </summary>
+    [Fact]
+    public void Property_AdjustedBalanceEqualsCashMovedByMonthEnd()
+    {
+        Prop.ForAll(seed: 2026, cases: 1000, random =>
+        {
+            var world = new CashWorld(random);
+            var report = ReconciliationCalculator.Compute(world.Data, Now);
+
+            var expected = Account.OpeningBalance + Money.FromCents(world.CashCents);
+            var events = string.Join("; ", world.Log);
+            Assert.True(Account.OpeningBalance + Money.FromCents(world.BankCents) == report.ComputedBankBalance, $"bank {report.ComputedBankBalance}: {events}");
+            Assert.True(expected == report.AdjustedBankBalance, $"expected {expected}, adjusted bank {report.AdjustedBankBalance}: {events}");
+            Assert.True(expected == report.AdjustedBookBalance, $"expected {expected}, adjusted book {report.AdjustedBookBalance}: {events}");
+        });
+    }
+
+    /// <summary>Random events in Feb–Apr 2026, reconciled for March; only events up to March 31 have moved cash.</summary>
+    private sealed class CashWorld
+    {
+        private readonly Random _random;
+        private readonly List<BankTransaction> _txns = [];
+        private readonly List<Receipt> _receipts = [];
+        private readonly List<MatchWithLinks> _matches = [];
+        private readonly List<BookEntry> _entries = [];
+        private long _id = 100;
+
+        public CashWorld(Random random)
+        {
+            _random = random;
+            for (var i = random.Next(0, 20); i > 0; i--)
+            {
+                switch (random.Next(7))
+                {
+                    case 0: case 1: CustomerPayment(); break;
+                    case 2: Cheque(); break;
+                    case 3: ManualBookDeposit(); break;
+                    case 4: BankLine(random.Next(-90_000, 0), bookConfirmed: true); break;    // bank charge, booked on import
+                    case 5: BankLine(random.Next(1, 90_000), bookConfirmed: random.Next(2) == 0); break; // stray or directly booked deposit
+                    default: StrayReceipt(); break;
+                }
+            }
+        }
+
+        /// <summary>One line per event with the cash it contributed, printed when the property fails.</summary>
+        public List<string> Log { get; } = [];
+
+        /// <summary>Bank movements up to March 31.</summary>
+        public long BankCents { get; private set; }
+
+        /// <summary>Cash that really moved up to March 31 according to either record.</summary>
+        public long CashCents { get; private set; }
+
+        public ReconciliationData Data => new(Account, March, _txns, _receipts, _matches, _entries, null);
+
+        private static bool ByMarch(int month) => month <= 3;
+
+        private int Month() => _random.Next(2, 5);
+
+        /// <summary>
+        /// Receipts paid by one deposit (possibly net of a fee). When the user confirmed the match and the deposit
+        /// has arrived, the cash is the deposit; otherwise the book and the bank records stand on their own.
+        /// </summary>
+        private void CustomerPayment()
+        {
+            var parts = Enumerable.Range(0, _random.Next(1, 4)).Select(_ => (Cents: (long)_random.Next(1, 50_000), Month: Month())).ToList();
+            var total = parts.Sum(p => p.Cents);
+            var fee = _random.Next(3) == 0 ? _random.NextInt64(1, Math.Min(500, total)) : 0;
+            var links = parts.Select(p => Add(Rec(_id++, _random.Next(1, 28), p.Cents, p.Month))).Select(r => r.Id).ToList();
+            var receiptsByMarch = parts.Where(p => ByMarch(p.Month)).Sum(p => p.Cents);
+
+            if (_random.Next(5) == 0)
+            {
+                CashCents += receiptsByMarch; // not paid yet
+                Log.Add($"unpaid receipts {Describe(parts)} → {receiptsByMarch}");
+                return;
+            }
+
+            var depositMonth = Month();
+            var deposit = Add(Txn(_id++, _random.Next(1, 28), total - fee, month: depositMonth));
+            var confidence = _random.Next(4) switch
+            {
+                0 => (MatchConfidence?)null,
+                1 => MatchConfidence.Suggested,
+                _ => MatchConfidence.Confirmed,
+            };
+            if (confidence is { } c)
+            {
+                _matches.Add(new MatchWithLinks(new Match(_id++, deposit.Id, deposit.PostingPeriod, MatchKind.Manual, c, Money.FromCents(fee), null), links));
+            }
+
+            var depositByMarch = ByMarch(depositMonth) ? deposit.Amount.Cents : 0;
+            var cash = confidence == MatchConfidence.Confirmed && ByMarch(depositMonth)
+                ? deposit.Amount.Cents
+                : confidence == MatchConfidence.Confirmed ? receiptsByMarch : receiptsByMarch + depositByMarch;
+            CashCents += cash;
+            Log.Add($"payment {Describe(parts)} fee {fee} deposit {deposit.Amount.Cents}@{depositMonth} {confidence?.ToString() ?? "unmatched"} → {cash}");
+        }
+
+        private static string Describe(IEnumerable<(long Cents, int Month)> parts) => "[" + string.Join(",", parts.Select(p => $"{p.Cents}@{p.Month}")) + "]";
+
+        /// <summary>A cheque written in the book, possibly cashed by the bank (in any order of the two dates).</summary>
+        private void Cheque()
+        {
+            var cents = _random.Next(-90_000, 0);
+            ClearedBookEntry(cents, bankLineBookConfirmed: true);
+        }
+
+        /// <summary>A deposit the user recorded by hand, possibly later seen on the statement.</summary>
+        private void ManualBookDeposit()
+        {
+            var cents = _random.Next(1, 90_000);
+            ClearedBookEntry(cents, bankLineBookConfirmed: false);
+        }
+
+        private void ClearedBookEntry(long cents, bool bankLineBookConfirmed)
+        {
+            var entryMonth = Month();
+            long? clearedBy = null;
+            var bankMonth = 0;
+            if (_random.Next(3) != 0)
+            {
+                bankMonth = Month();
+                clearedBy = Add(Txn(_id++, _random.Next(1, 28), cents, bankLineBookConfirmed, bankMonth)).Id;
+            }
+
+            _entries.Add(new BookEntry(_id++, 1, new DateOnly(2026, entryMonth, _random.Next(1, 28)), Money.FromCents(cents), "entry", clearedBy));
+            var moved = ByMarch(entryMonth) || (clearedBy is not null && ByMarch(bankMonth));
+            if (moved)
+            {
+                CashCents += cents;
+            }
+
+            Log.Add($"book entry {cents}@{entryMonth} bank {(clearedBy is null ? "-" : bankMonth.ToString(System.Globalization.CultureInfo.InvariantCulture))} → {(moved ? cents : 0)}");
+        }
+
+        private void BankLine(long cents, bool bookConfirmed)
+        {
+            var month = Month();
+            Add(Txn(_id++, _random.Next(1, 28), cents, bookConfirmed, month));
+            if (ByMarch(month))
+            {
+                CashCents += cents;
+            }
+
+            Log.Add($"bank line {cents}@{month} booked={bookConfirmed}");
+        }
+
+        private void StrayReceipt()
+        {
+            var month = Month();
+            var r = Add(Rec(_id++, _random.Next(1, 28), _random.Next(1, 50_000), month));
+            if (ByMarch(month))
+            {
+                CashCents += r.Amount.Cents;
+            }
+
+            Log.Add($"stray receipt {r.Amount.Cents}@{month}");
+        }
+
+        private BankTransaction Add(BankTransaction txn)
+        {
+            _txns.Add(txn);
+            if (ByMarch(txn.PostingPeriod.Month))
+            {
+                BankCents += txn.Amount.Cents;
+            }
+
+            return txn;
+        }
+
+        private Receipt Add(Receipt receipt)
+        {
+            _receipts.Add(receipt);
+            return receipt;
+        }
     }
 
     private static ReconciliationData RandomData(Random random)

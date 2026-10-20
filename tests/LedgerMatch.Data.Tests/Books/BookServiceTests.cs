@@ -70,6 +70,22 @@ public class BookServiceTests : IDisposable
     }
 
     [Fact]
+    public void ConfirmedMatch_WithAReceiptIssuedNextMonth_IsBookedInTheDepositMonth()
+    {
+        var early = _ledger.AddReceipt(_account, "R-1", 1000, new DateOnly(2026, 3, 24));
+        var late = _ledger.AddReceipt(_account, "R-2", 234, new DateOnly(2026, 4, 1));
+        _ledger.Matching.ManualMatch(Txn("T1").Id, [early.Id, late.Id], false);
+
+        var march = _reports.Generate(_account.Id, March);
+
+        Assert.Empty(march.DepositsInTransit.Items);
+        Assert.Empty(march.BankOnlyDeposits.Items);
+        Assert.Equal(1_001_234, march.BookBalance.Cents);
+        Assert.Equal(march.ComputedBankBalance, march.AdjustedBankBalance);
+        Assert.True(march.IsBalanced);
+    }
+
+    [Fact]
     public void StatementBalance_SetChangeRemove_AreUndoable()
     {
         _books.SetStatementBalance(_account.Id, March, Money.FromCents(1));

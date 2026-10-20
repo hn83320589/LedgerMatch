@@ -38,7 +38,13 @@ public sealed partial class SqliteLedgerStore
     {
         var account = GetAccount(accountId) ?? throw new LedgerException($"找不到帳戶 #{accountId}。");
         var transactions = Query(EntityMaps.BankTransaction, "WHERE account_id = @a AND posting_period <= @m", ("@a", accountId), ("@m", month));
-        var receipts = Query(EntityMaps.Receipt, "WHERE account_id = @a AND issue_date <= @d", ("@a", accountId), ("@d", month.LastDay));
+        // Receipts issued later still count when a match up to this month already paid them (see ReconciliationCalculator).
+        var receipts = Query(
+            EntityMaps.Receipt,
+            "WHERE account_id = @a AND (issue_date <= @d OR id IN (SELECT receipt_id FROM match_link WHERE period <= @m))",
+            ("@a", accountId),
+            ("@d", month.LastDay),
+            ("@m", month));
         var matches = Query(
             EntityMaps.Match,
             "WHERE period <= @m AND deposit_txn_id IN (SELECT id FROM bank_txn WHERE account_id = @a)",
