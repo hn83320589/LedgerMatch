@@ -52,6 +52,38 @@ public class ReconciliationExportTests
         Assert.Contains(records, r => r.Fields.Count > 3 && r.Fields[2] == "R,1" && r.Fields[3] == tricky);
     }
 
+    [Theory]
+    [InlineData("=HYPERLINK(\"http://x\",\"點我\")")]
+    [InlineData("+1+2")]
+    [InlineData("-2+3")]
+    [InlineData("@SUM(A1)")]
+    [InlineData("\t=1")]
+    public void Csv_TextFromStatementsCannotBecomeAFormula_WhileAmountsStayNumeric(string hostile)
+    {
+        // Descriptions come from the bank (remitter's memo), customers and receipt numbers from users; the accountant opens the CSV in Excel.
+        var report = Report() with
+        {
+            AccountName = hostile,
+            BankOnlyWithdrawals = new ReconciliationSection("扣款", [new ReconciliationItem(new DateOnly(2026, 3, 1), hostile, hostile, Money.FromCents(-12_345), hostile)]),
+        };
+
+        var bytes = ReconciliationCsv.Write(report);
+        var records = CsvReader.Read(new StringReader(Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3)), ',').ToList();
+
+        Assert.Contains(records, r => r.Fields.SequenceEqual(["帳戶", "'" + hostile]));
+        var item = Assert.Single(records, r => r.Fields.Count == 6 && r.Fields[1] == "2026-03-01");
+        Assert.Equal(["'" + hostile, "'" + hostile, "-123.45", "'" + hostile], new[] { item.Fields[2], item.Fields[3], item.Fields[4], item.Fields[5] });
+        Assert.Contains(records, r => r.Fields[0] == "調整後銀行餘額" && r.Fields[4] == "-994.25");
+    }
+
+    [Fact]
+    public void Csv_SafeText_LeavesOrdinaryTextAlone()
+    {
+        Assert.Equal("刷卡撥款 -2", CsvWriter.SafeText("刷卡撥款 -2"));
+        Assert.Equal("R-0301", CsvWriter.SafeText("R-0301"));
+        Assert.Equal(string.Empty, CsvWriter.SafeText(null));
+    }
+
     [Fact]
     public void Html_IsA4PortraitAndEscapesText()
     {

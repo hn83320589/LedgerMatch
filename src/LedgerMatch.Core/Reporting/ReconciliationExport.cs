@@ -56,7 +56,7 @@ public static class ReconciliationCsv
     {
         var csv = new CsvWriter()
             .Row("銀行餘額調節表")
-            .Row("帳戶", report.AccountName)
+            .Row("帳戶", CsvWriter.SafeText(report.AccountName))
             .Row("月份", report.Month.ToString())
             .Row("產生時間", report.GeneratedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
             .Row()
@@ -68,7 +68,13 @@ public static class ReconciliationCsv
             {
                 case ReconciliationLineKind.Item:
                     var item = line.Item!;
-                    csv.Row(string.Empty, item.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), item.Reference, item.Description, item.Amount.ToPlainString(), item.Note);
+                    csv.Row(
+                        string.Empty,
+                        item.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        CsvWriter.SafeText(item.Reference),
+                        CsvWriter.SafeText(item.Description),
+                        item.Amount.ToPlainString(),
+                        CsvWriter.SafeText(item.Note));
                     break;
                 case ReconciliationLineKind.Heading or ReconciliationLineKind.Note:
                     csv.Row(line.Label);

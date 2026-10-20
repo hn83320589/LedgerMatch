@@ -17,6 +17,17 @@ public sealed class CsvWriter
 
     public override string ToString() => _text.ToString();
 
+    /// <summary>
+    /// Text that came from outside (bank memo, customer, receipt number, account name) is prefixed with an
+    /// apostrophe when it starts like a formula, so Excel shows it as text instead of evaluating it.
+    /// Amount and date columns must not go through this: negative amounts start with '-' and stay numeric.
+    /// </summary>
+    public static string SafeText(string? text)
+    {
+        text ??= string.Empty;
+        return text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + text : text;
+    }
+
     public static string Escape(string? cell)
     {
         cell ??= string.Empty;
