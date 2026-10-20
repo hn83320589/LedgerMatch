@@ -59,11 +59,12 @@ public sealed class StatementImportService(ILedgerStore store, ILedgerQueries qu
         var plan = Plan(account, profile, parsed.Rows);
         cancellationToken.ThrowIfCancellationRequested();
 
+        var errors = parsed.Errors.Concat(plan.Conflicts).OrderBy(e => e.LineNumber).ToList();
         var total = plan.ToInsert.Count + plan.ToPending.Count;
         var firstId = store.ReserveIds(total + 1);
         var batch = new ImportBatch(
             firstId, ImportKind.Statement, account.Id, fileName, sha256, time.GetUtcNow(),
-            plan.ToInsert.Count, plan.Duplicates.Count, parsed.Errors.Count, plan.ToPending.Count);
+            plan.ToInsert.Count, plan.Duplicates.Count, errors.Count, plan.ToPending.Count);
 
         var changes = new ChangeSetBuilder($"匯入對帳單 {fileName}").Insert(batch);
         var nextId = firstId + 1;
@@ -86,7 +87,7 @@ public sealed class StatementImportService(ILedgerStore store, ILedgerQueries qu
         executor.Execute(changes.Build());
         progress?.Report(new ImportProgress(ImportStage.Done, total, total));
 
-        return new ImportSummary(batch.Id, plan.ToInsert.Count, plan.Duplicates.Count, plan.ToPending.Count, parsed.Errors);
+        return new ImportSummary(batch.Id, plan.ToInsert.Count, plan.Duplicates.Count, plan.ToPending.Count, errors);
     }
 
     internal static BankTransaction NewTransaction(long id, long accountId, long? batchId, PlannedRow planned)
@@ -102,17 +103,13 @@ public sealed class StatementImportService(ILedgerStore store, ILedgerQueries qu
     {
         if (rows.Count == 0)
         {
-            return new ImportPlan([], [], []);
+            return new ImportPlan([], [], [], []);
         }
 
-        var from = rows.Min(r => r.Date);
-        var to = rows.Max(r => r.Date);
-        return ImportPlanner.Plan(
-            rows,
-            profile.Serial is not null,
-            queries.GetTransactionDedupKeys(account.Id, from, to),
-            queries.GetPendingDedupKeys(account.Id, from, to),
-            store.GetClosedPeriods());
+        // Look keys up directly rather than by the file's date range: a serial may already be stored under any date.
+        var hasSerial = profile.Serial is not null;
+        var keys = ImportPlanner.BuildKeys(rows, hasSerial).Distinct().ToList();
+        return ImportPlanner.Plan(rows, hasSerial, queries.FindByDedupKeys(account.Id, keys), store.GetClosedPeriods());
     }
 
     private static void ReportEvery(IProgress<ImportProgress>? progress, int processed, int total, CancellationToken cancellationToken)

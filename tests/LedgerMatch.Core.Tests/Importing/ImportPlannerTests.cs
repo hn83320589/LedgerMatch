@@ -5,8 +5,11 @@ namespace LedgerMatch.Core.Tests.Importing;
 
 public class ImportPlannerTests
 {
-    private static readonly HashSet<string> None = [];
+    private static readonly Dictionary<string, ExistingRow> None = [];
     private static readonly HashSet<YearMonth> NoClosed = [];
+
+    private static Dictionary<string, ExistingRow> Existing(IEnumerable<(string Key, ParsedStatementRow Row)> rows) =>
+        rows.ToDictionary(r => r.Key, r => new ExistingRow(r.Row.Date, r.Row.Amount, r.Row.Description));
 
     private static ParsedStatementRow Row(int day, long cents, string desc, string? serial = null, int line = 0) =>
         new(line, new DateOnly(2026, 3, day), Money.FromCents(cents), desc, serial, null);
@@ -39,10 +42,10 @@ public class ImportPlannerTests
     public void Plan_SplitsNewDuplicateAndClosedPeriodRows()
     {
         var rows = new[] { Row(1, 100, "a"), Row(2, 200, "b"), Row(3, 300, "c") };
-        var existing = new HashSet<string> { "N|2026-03-02|200|b|1" };
+        var existing = Existing([("N|2026-03-02|200|b|1", Row(2, 200, "b"))]);
         var febRow = new ParsedStatementRow(0, new DateOnly(2026, 2, 27), Money.FromCents(50), "late", null, null);
 
-        var plan = ImportPlanner.Plan([.. rows, febRow], false, existing, None, new HashSet<YearMonth> { new(2026, 2) });
+        var plan = ImportPlanner.Plan([.. rows, febRow], false, existing, new HashSet<YearMonth> { new(2026, 2) });
 
         Assert.Equal(["a", "c"], plan.ToInsert.Select(p => p.Row.Description));
         Assert.Equal(["b"], plan.Duplicates.Select(p => p.Row.Description));
@@ -50,18 +53,50 @@ public class ImportPlannerTests
     }
 
     [Fact]
-    public void Plan_PendingKeysCountAsAlreadyImported()
+    public void Plan_RepeatedSerialInsideOneFile_SameTransaction_IsDuplicate()
     {
-        var plan = ImportPlanner.Plan([Row(1, 100, "a")], false, None, new HashSet<string> { "N|2026-03-01|100|a|1" }, NoClosed);
+        var plan = ImportPlanner.Plan([Row(1, 1, "x", "A1", line: 2), Row(1, 1, " x ", "A1", line: 3)], true, None, NoClosed);
+
+        Assert.Single(plan.ToInsert);
         Assert.Single(plan.Duplicates);
+        Assert.Empty(plan.Conflicts);
     }
 
     [Fact]
-    public void Plan_RepeatedSerialInsideOneFile_IsDuplicate()
+    public void Plan_RepeatedSerialInsideOneFile_DifferentTransaction_IsAnErrorNamingBothLines()
     {
-        var plan = ImportPlanner.Plan([Row(1, 1, "x", "A1"), Row(2, 2, "y", "A1")], true, None, None, NoClosed);
-        Assert.Single(plan.ToInsert);
+        var plan = ImportPlanner.Plan([Row(1, 1, "x", "A1", line: 2), Row(2, 2, "y", "A1", line: 3)], true, None, NoClosed);
+
+        Assert.Equal(["x"], plan.ToInsert.Select(p => p.Row.Description));
+        Assert.Empty(plan.Duplicates);
+        var conflict = Assert.Single(plan.Conflicts);
+        Assert.Equal(3, conflict.LineNumber);
+        Assert.Contains("A1", conflict.Reason);
+        Assert.Contains("第 2 列", conflict.Reason);
+    }
+
+    [Fact]
+    public void Plan_SerialAlreadyUsedByADifferentTransaction_IsAnErrorNotADuplicate()
+    {
+        // The serial was imported for February; banks that restart numbering would otherwise lose this row silently.
+        var february = new ParsedStatementRow(0, new DateOnly(2026, 2, 10), Money.FromCents(500), "二月存入", "000123", null);
+        var plan = ImportPlanner.Plan([Row(10, 900, "三月存入", "000123", line: 4), Row(11, 5, "z", "000124", line: 5)], true, Existing([("S|000123", february)]), NoClosed);
+
+        Assert.Equal(["z"], plan.ToInsert.Select(p => p.Row.Description));
+        Assert.Empty(plan.Duplicates);
+        var conflict = Assert.Single(plan.Conflicts);
+        Assert.Equal(4, conflict.LineNumber);
+        Assert.Contains("000123", conflict.Reason);
+        Assert.Contains("2026-02-10", conflict.Reason);
+    }
+
+    [Fact]
+    public void Plan_SerialAlreadyImportedForTheSameTransaction_IsDuplicate()
+    {
+        var plan = ImportPlanner.Plan([Row(10, 900, "ＡＴＭ 存入", "000123")], true, Existing([("S|000123", Row(10, 900, "ATM 存入", "000123"))]), NoClosed);
+
         Assert.Single(plan.Duplicates);
+        Assert.Empty(plan.Conflicts);
     }
 
     /// <summary>
@@ -83,7 +118,8 @@ public class ImportPlannerTests
             var db = new List<(string Key, ParsedStatementRow Row)>();
             foreach (var file in imports)
             {
-                var plan = ImportPlanner.Plan(file, hasSerial, db.Select(d => d.Key).ToHashSet(), None, NoClosed);
+                var plan = ImportPlanner.Plan(file, hasSerial, Existing(db), NoClosed);
+                Assert.Empty(plan.Conflicts);
                 db.AddRange(plan.ToInsert.Select(p => (p.DedupKey, p.Row)));
             }
 

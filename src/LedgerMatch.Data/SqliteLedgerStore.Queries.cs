@@ -18,11 +18,31 @@ public sealed partial class SqliteLedgerStore : ILedgerQueries
 
     public Setting? GetSetting(string key) => Query(EntityMaps.Setting, "WHERE key = @k", ("@k", key)).SingleOrDefault();
 
-    public IReadOnlySet<string> GetTransactionDedupKeys(long accountId, DateOnly from, DateOnly to) =>
-        Keys("SELECT dedup_key FROM bank_txn WHERE account_id = @a AND txn_date BETWEEN @from AND @to;", accountId, from, to);
+    public IReadOnlyDictionary<string, ExistingRow> FindByDedupKeys(long accountId, IReadOnlyCollection<string> keys)
+    {
+        // Batched IN lists use the (account_id, dedup_key) unique indexes and stay under SQLite's parameter limit.
+        const int BatchSize = 500;
+        var found = new Dictionary<string, ExistingRow>(StringComparer.Ordinal);
+        using var connection = database.OpenConnection();
+        foreach (var batch in keys.Chunk(BatchSize))
+        {
+            var names = string.Join(", ", batch.Select((_, i) => $"@k{i}"));
+            var parameters = batch.Select((k, i) => ($"@k{i}", (object?)k)).Prepend(("@a", accountId)).ToArray();
+            foreach (var table in new[] { "bank_txn", "pending_item" })
+            {
+                using var command = connection.Command(
+                    $"SELECT dedup_key, txn_date, amount_cents, description FROM {table} WHERE account_id = @a AND dedup_key IN ({names});",
+                    parameters);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    found.TryAdd(reader.Str("dedup_key"), new ExistingRow(reader.Date("txn_date"), reader.Money("amount_cents"), reader.Str("description")));
+                }
+            }
+        }
 
-    public IReadOnlySet<string> GetPendingDedupKeys(long accountId, DateOnly from, DateOnly to) =>
-        Keys("SELECT dedup_key FROM pending_item WHERE account_id = @a AND txn_date BETWEEN @from AND @to;", accountId, from, to);
+        return found;
+    }
 
     public BankTransaction? GetTransaction(long id) => Find<BankTransaction>(id);
 
@@ -72,18 +92,4 @@ public sealed partial class SqliteLedgerStore : ILedgerQueries
             "WHERE period = @p AND deposit_txn_id IN (SELECT id FROM bank_txn WHERE account_id = @a) ORDER BY id",
             ("@a", accountId),
             ("@p", period));
-
-    private HashSet<string> Keys(string sql, long accountId, DateOnly from, DateOnly to)
-    {
-        using var connection = database.OpenConnection();
-        using var command = connection.Command(sql, ("@a", accountId), ("@from", from), ("@to", to));
-        using var reader = command.ExecuteReader();
-        var keys = new HashSet<string>(StringComparer.Ordinal);
-        while (reader.Read())
-        {
-            keys.Add(reader.GetString(0));
-        }
-
-        return keys;
-    }
 }

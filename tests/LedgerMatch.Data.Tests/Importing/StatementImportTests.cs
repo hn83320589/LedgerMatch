@@ -82,6 +82,44 @@ public class StatementImportTests : IDisposable
         Assert.Equal((1, 1, 2, 0), (batch.Added, batch.Skipped, batch.Errors, batch.Pending));
     }
 
+    [Fact]
+    public void SerialUsedOutsideTheFileRange_ByAnotherTransaction_IsAnErrorRow_AndTheRestIsImported()
+    {
+        // Before the fix only keys inside the file's date range were checked, so this row hit the UNIQUE index
+        // and the whole file was rolled back with a generic message.
+        var account = _ledger.BankA();
+        _ledger.ImportUtf8(account, BankAHeader + "2026/02/10,二月存入,500,000123,\n");
+
+        var summary = _ledger.ImportUtf8(account, BankAHeader +
+            "2026/03/10,三月存入,900,000123,\n" +     // line 2: serial reused for a different transaction
+            "2026/03/11,三月另一筆,100,000124,\n");   // line 3
+
+        Assert.Equal((1, 0), (summary.Added, summary.SkippedDuplicates));
+        var error = Assert.Single(summary.Errors);
+        Assert.Equal(2, error.LineNumber);
+        Assert.Contains("000123", error.Reason);
+        Assert.Contains("2026-02-10", error.Reason);
+        Assert.Equal(["02-10|50000|二月存入|000123", "03-11|10000|三月另一筆|000124"], Ledger(account));
+        Assert.Equal(1, _ledger.Store.Find<ImportBatch>(summary.BatchId)!.Errors);
+    }
+
+    [Fact]
+    public void SerialUsedInsideTheFileRange_ByAnotherTransaction_IsAnErrorRow_NotASilentDuplicate()
+    {
+        var account = _ledger.BankA();
+        _ledger.ImportUtf8(account, BankAHeader + "2026/03/10,現金存入,800,T0003,\n");
+
+        var summary = _ledger.ImportUtf8(account, BankAHeader +
+            "2026/03/01,現金存入,500,T0001,\n" +     // line 2
+            "2026/03/10,現金存入,800,T0003,\n" +     // line 3: same transaction → duplicate
+            "2026/03/12,轉帳存入,300,T0003,\n" +     // line 4: same serial, different transaction
+            "2026/03/20,水電費,-100,T0009,\n");      // line 5
+
+        Assert.Equal((2, 1), (summary.Added, summary.SkippedDuplicates));
+        Assert.Equal([4], summary.Errors.Select(e => e.LineNumber));
+        Assert.DoesNotContain(Ledger(account), r => r.Contains("轉帳存入", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
