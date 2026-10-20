@@ -1,6 +1,6 @@
 # 帳務對帳房 LedgerMatch
 
-[![CI](https://github.com/OWNER/LedgerMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/LedgerMatch/actions/workflows/ci.yml)
+[![CI](https://github.com/hn83320589/LedgerMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/hn83320589/LedgerMatch/actions/workflows/ci.yml)
 
 給小型店家（例如三人烘焙坊）的 Windows 桌面對帳工具。功能包括：匯入兩家銀行格式不同的對帳單與自己開的收款單，自動配對並標出對不上的項目，支出可以歸類、拆分，月底產出能交給會計師的銀行餘額調節表，最後結帳鎖定該月。
 
@@ -313,6 +313,8 @@ App ──► Presentation ──► Core ◄── Data
 | Data.Tests | 100 | migration／損毀／版本、稽核不可修改、各服務 + SQLite、範例資料端到端 |
 | Presentation.Tests | 48 | 所有 ViewModel：篩選、分頁、拆分預覽、配對、結帳、調節表匯出、稽核唯讀 |
 | Perf.Tests | 4 | 十萬筆資料庫（`Category=Perf`） |
+
+完整的測試結果、實機驗證與驗收標準逐條對照見 [docs/test-report.md](docs/test-report.md)。
 
 **性質測試**（自寫產生器 `Prop.ForAll`，固定種子；失敗訊息會印出可重現的 case seed）：
 
