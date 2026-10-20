@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="LedgerMatch.App.Views.RulesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:LedgerMatch.Presentation.ViewModels"
+    xmlns:domain="using:LedgerMatch.Core.Domain">
+    <ScrollViewer Padding="24,16">
+        <StackPanel Spacing="20" MaxWidth="1200" HorizontalAlignment="Left">
+            <TextBlock Text="科目與歸類規則" Style="{StaticResource TitleTextBlockStyle}" />
+
+            <StackPanel Spacing="8" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <TextBlock Text="科目" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox MinWidth="200" PlaceholderText="選擇科目" ItemsSource="{x:Bind ViewModel.Categories}"
+                              SelectedItem="{x:Bind ViewModel.SelectedCategory, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="domain:Category">
+                                <TextBlock Text="{x:Bind Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox Width="200" PlaceholderText="科目名稱" Text="{x:Bind ViewModel.CategoryName, Mode=TwoWay}" />
+                    <Button Content="新增" Command="{x:Bind ViewModel.AddCategoryCommand}" />
+                    <Button Content="改名" Command="{x:Bind ViewModel.RenameCategoryCommand}" />
+                    <Button Content="刪除" Command="{x:Bind ViewModel.DeleteCategoryCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Grid ColumnSpacing="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="8">
+                    <TextBlock Text="規則（由上而下，第一條命中者生效）" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
+                    <ListView ItemsSource="{x:Bind ViewModel.Rules}" SelectedItem="{x:Bind ViewModel.SelectedRule, Mode=TwoWay}" Height="280"
+                              BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="domain:Rule">
+                                <StackPanel Orientation="Horizontal" Spacing="8" Padding="0,4">
+                                    <TextBlock Text="{x:Bind Priority}" Width="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="{x:Bind Name}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="新增" Command="{x:Bind ViewModel.NewRuleCommand}" />
+                        <Button Content="上移" Command="{x:Bind ViewModel.MoveUpCommand}" />
+                        <Button Content="下移" Command="{x:Bind ViewModel.MoveDownCommand}" />
+                        <Button Content="刪除" Command="{x:Bind ViewModel.DeleteRuleCommand}" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="10" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <TextBlock Text="規則內容（條件須同時成立，空白表示不限）" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <Grid ColumnSpacing="12" RowSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox Header="規則名稱" Text="{x:Bind ViewModel.RuleName, Mode=TwoWay}" />
+                        <ComboBox Grid.Column="1" Header="歸入科目" HorizontalAlignment="Stretch" ItemsSource="{x:Bind ViewModel.Categories}"
+                                  SelectedItem="{x:Bind ViewModel.RuleCategory, Mode=TwoWay}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="domain:Category">
+                                    <TextBlock Text="{x:Bind Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBox Grid.Row="1" Header="摘要包含文字" Text="{x:Bind ViewModel.Contains, Mode=TwoWay}" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Header="摘要符合正規表達式" Text="{x:Bind ViewModel.Regex, Mode=TwoWay}" />
+                        <TextBox Grid.Row="2" Header="金額下限（支出為負數）" Text="{x:Bind ViewModel.MinAmount, Mode=TwoWay}" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Header="金額上限" Text="{x:Bind ViewModel.MaxAmount, Mode=TwoWay}" />
+                        <CheckBox Grid.Row="3" Content="只套用在目前選擇的帳戶" IsChecked="{x:Bind ViewModel.OnlyCurrentAccount, Mode=TwoWay}" />
+                        <CheckBox Grid.Row="3" Grid.Column="1" Content="啟用" IsChecked="{x:Bind ViewModel.RuleEnabled, Mode=TwoWay}" />
+                    </Grid>
+                    <Button Content="儲存規則" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.SaveRuleCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Spacing="8" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <TextBlock Text="預覽與套用" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="規則不會改動手動歸類、已拆分或已結帳月份的交易。預覽不寫入資料；套用是一個步驟，可用「復原」一次還原。" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <CheckBox Content="只處理目前帳戶與月份" IsChecked="{x:Bind ViewModel.ScopeToCurrent, Mode=TwoWay}" />
+                    <Button Content="預覽（不寫入）" Command="{x:Bind ViewModel.PreviewCommand}" />
+                    <Button Content="套用規則" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ApplyCommand}" />
+                    <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+                </StackPanel>
+                <ListView ItemsSource="{x:Bind ViewModel.PreviewHits}" MaxHeight="320">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RuleHitItem">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="200" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{x:Bind Date}" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Description}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind Amount}" TextAlignment="Right" />
+                                <TextBlock Grid.Column="3" Text="{x:Bind Rule}" />
+                                <TextBlock Grid.Column="4">
+                                    <Run Text="{x:Bind OldCategory}" /><Run Text=" → " /><Run Text="{x:Bind NewCategory}" />
+                                </TextBlock>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

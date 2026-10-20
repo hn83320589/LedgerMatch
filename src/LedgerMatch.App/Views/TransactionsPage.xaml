@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="LedgerMatch.App.Views.TransactionsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="using:LedgerMatch.App"
+    xmlns:vm="using:LedgerMatch.Presentation.ViewModels"
+    xmlns:domain="using:LedgerMatch.Core.Domain">
+    <Grid Padding="24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Text="交易" Style="{StaticResource TitleTextBlockStyle}" />
+
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+            <ComboBox Header="狀態" Width="130" SelectedIndex="{x:Bind ViewModel.StatusIndex, Mode=TwoWay}">
+                <ComboBoxItem Content="全部" />
+                <ComboBoxItem Content="未配對入帳" />
+                <ComboBoxItem Content="建議配對" />
+                <ComboBoxItem Content="已配對" />
+                <ComboBoxItem Content="支出" />
+                <ComboBoxItem Content="未歸類" />
+            </ComboBox>
+            <TextBox Header="日期起" Width="120" PlaceholderText="yyyy-MM-dd" Text="{x:Bind ViewModel.FromDate, Mode=TwoWay}" />
+            <TextBox Header="日期迄" Width="120" PlaceholderText="yyyy-MM-dd" Text="{x:Bind ViewModel.ToDate, Mode=TwoWay}" />
+            <TextBox Header="金額下限" Width="110" Text="{x:Bind ViewModel.MinAmount, Mode=TwoWay}" />
+            <TextBox Header="金額上限" Width="110" Text="{x:Bind ViewModel.MaxAmount, Mode=TwoWay}" />
+            <TextBox Header="關鍵字" Width="180" Text="{x:Bind ViewModel.Keyword, Mode=TwoWay}" />
+            <Button Content="搜尋" VerticalAlignment="Bottom" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.ReloadCommand}" />
+            <Button Content="清除" VerticalAlignment="Bottom" Command="{x:Bind ViewModel.ClearFiltersCommand}" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" Padding="12,0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="110" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="90" />
+                <ColumnDefinition Width="140" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="日期" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="1" Text="序號" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="2" Text="摘要" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="3" Text="金額" Style="{StaticResource CaptionTextBlockStyle}" TextAlignment="Right" />
+            <TextBlock Grid.Column="4" Text="狀態" Style="{StaticResource CaptionTextBlockStyle}" />
+            <TextBlock Grid.Column="5" Text="科目" Style="{StaticResource CaptionTextBlockStyle}" />
+        </Grid>
+
+        <ListView x:Name="List" Grid.Row="3" ItemsSource="{x:Bind ViewModel.Items}" SelectionMode="Extended"
+                  SelectionChanged="OnSelectionChanged" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:TransactionItem">
+                    <Grid ColumnSpacing="12" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="140" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Date}" />
+                            <TextBlock Text="{x:Bind PostingNote}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{x:Bind Reference}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Text="{x:Bind Description}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3" Text="{x:Bind Amount}" TextAlignment="Right" FontFamily="Consolas" />
+                        <TextBlock Grid.Column="4" Text="{x:Bind Status}" />
+                        <TextBlock Grid.Column="5" Text="{x:Bind Category}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
+            <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+            <Button Content="載入更多" Command="{x:Bind ViewModel.LoadMoreCommand}" />
+            <AppBarSeparator />
+            <ComboBox PlaceholderText="選擇科目" MinWidth="160" ItemsSource="{x:Bind ViewModel.Categories}"
+                      SelectedItem="{x:Bind ViewModel.TargetCategory, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.IsEditable, Mode=OneWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="domain:Category">
+                        <TextBlock Text="{x:Bind Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Content="歸類所選" Command="{x:Bind ViewModel.ApplyCategoryCommand}" IsEnabled="{x:Bind ViewModel.IsEditable, Mode=OneWay}" />
+            <Button Content="拆分…" Command="{x:Bind ViewModel.EditSplitCommand}" IsEnabled="{x:Bind ViewModel.IsEditable, Mode=OneWay}" />
+            <Button Content="入帳直接列入帳面" Command="{x:Bind ViewModel.BookDepositsCommand}" IsEnabled="{x:Bind ViewModel.IsEditable, Mode=OneWay}"
+                    ToolTipService.ToolTip="沒有收款單的入帳（例如利息）可直接列入帳面" />
+        </StackPanel>
+
+        <!-- Split editor side panel -->
+        <Border Grid.Row="1" Grid.RowSpan="4" Grid.Column="1" Width="380" Margin="12,0,0,0" Padding="16" CornerRadius="8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Visibility="{x:Bind app:Ui.Visible(ViewModel.Split.IsOpen), Mode=OneWay}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="拆分交易" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock Text="{x:Bind ViewModel.Split.Header, Mode=OneWay}" TextWrapping="Wrap" />
+                <ToggleSwitch Header="分配方式" OnContent="按比例（精確到分）" OffContent="輸入金額" IsOn="{x:Bind ViewModel.Split.ByRatio, Mode=TwoWay}" />
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Split.Lines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SplitLineInput">
+                            <Grid ColumnSpacing="8" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="80" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox HorizontalAlignment="Stretch" PlaceholderText="科目" SelectedItem="{x:Bind Category, Mode=TwoWay}" Tag="{x:Bind}" Loaded="OnSplitCategoryLoaded">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="domain:Category">
+                                            <TextBlock Text="{x:Bind Name}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBox Grid.Column="1" Text="{x:Bind Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" Text="{x:Bind Preview, Mode=OneWay}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{x:Bind ViewModel.Split.Remaining, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="新增一份" Command="{x:Bind ViewModel.Split.AddLineCommand}" />
+                    <Button Content="儲存拆分" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.Split.SaveCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="取消拆分" Command="{x:Bind ViewModel.Split.RemoveSplitCommand}" />
+                    <Button Content="關閉" Command="{x:Bind ViewModel.Split.CloseCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

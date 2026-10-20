@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="LedgerMatch.App.StartupErrorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="帳務對帳房 LedgerMatch">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+    <StackPanel Margin="32" Spacing="16" MaxWidth="720" HorizontalAlignment="Left">
+        <TextBlock x:Name="TitleText" Style="{StaticResource TitleTextBlockStyle}" />
+        <TextBlock x:Name="MessageText" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Text="程式沒有修改這個檔案。若需要使用其他資料庫，可設定環境變數 LEDGERMATCH_DB 指向另一個檔案路徑後重新開啟。" />
+        <Button Content="關閉" Click="OnClose" />
+    </StackPanel>
+</Window>

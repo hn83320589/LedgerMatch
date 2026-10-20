@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="LedgerMatch.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="using:LedgerMatch.App">
+    <ScrollViewer Padding="24,16">
+        <StackPanel Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
+            <TextBlock Text="配對參數" Style="{StaticResource TitleTextBlockStyle}" />
+            <NumberBox Header="精確配對：日期差容許天數（0–31，含邊界）" Minimum="0" Maximum="31" SpinButtonPlacementMode="Inline"
+                       Value="{x:Bind app:Ui.ToDouble(ViewModel.ExactDateToleranceDays), BindBack=SetTolerance, Mode=TwoWay}" />
+            <NumberBox Header="一對多／手續費：收款單回溯天數（0–31）" Minimum="0" Maximum="31" SpinButtonPlacementMode="Inline"
+                       Value="{x:Bind app:Ui.ToDouble(ViewModel.LookbackDays), BindBack=SetLookback, Mode=TwoWay}" />
+            <NumberBox Header="單次候選收款單上限（2–30）" Minimum="2" Maximum="30" SpinButtonPlacementMode="Inline"
+                       Value="{x:Bind app:Ui.ToDouble(ViewModel.MaxCandidates), BindBack=SetCandidates, Mode=TwoWay}" />
+            <NumberBox Header="組合大小上限（2–8）" Minimum="2" Maximum="8" SpinButtonPlacementMode="Inline"
+                       Value="{x:Bind app:Ui.ToDouble(ViewModel.MaxComboSize), BindBack=SetComboSize, Mode=TwoWay}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <CheckBox Content="手續費固定上限（元）" IsChecked="{x:Bind ViewModel.UseFixedFeeCap, Mode=TwoWay}" />
+                <TextBox Width="120" Text="{x:Bind ViewModel.FixedFeeCap, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.UseFixedFeeCap, Mode=OneWay}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <CheckBox Content="手續費比例上限（%）" IsChecked="{x:Bind ViewModel.UseRateFeeCap, Mode=TwoWay}" />
+                <TextBox Width="120" Text="{x:Bind ViewModel.RateFeeCapPercent, Mode=TwoWay}" IsEnabled="{x:Bind ViewModel.UseRateFeeCap, Mode=OneWay}" />
+            </StackPanel>
+            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="兩者都勾選時，容許的手續費取兩者中較大者；兩者都不勾選則不進行含手續費配對。" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="儲存" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.SaveCommand}" />
+                <Button Content="恢復預設值" Command="{x:Bind ViewModel.ResetToDefaultsCommand}" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

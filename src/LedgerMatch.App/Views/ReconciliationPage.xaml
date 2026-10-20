@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="LedgerMatch.App.Views.ReconciliationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:app="using:LedgerMatch.App"
+    xmlns:vm="using:LedgerMatch.Presentation.ViewModels">
+    <Grid Padding="24,16" ColumnSpacing="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="360" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="銀行餘額調節表" Style="{StaticResource TitleTextBlockStyle}" />
+            <Button Content="重新計算" Command="{x:Bind ViewModel.GenerateCommand}" />
+            <Button Content="匯出 CSV" Command="{x:Bind ViewModel.ExportCsvCommand}" />
+            <Button Content="匯出可列印 HTML" Command="{x:Bind ViewModel.ExportHtmlCommand}" />
+        </StackPanel>
+
+        <InfoBar Grid.Row="1" IsOpen="True" IsClosable="False" Title="{x:Bind ViewModel.Summary, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+        <ListView Grid.Row="2" ItemsSource="{x:Bind ViewModel.Lines}" SelectionMode="None"
+                  BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ReconciliationLineItem">
+                    <Grid ColumnSpacing="12" Margin="{x:Bind app:Ui.LineIndent(Kind)}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="110" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="140" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{x:Bind Date}" />
+                        <TextBlock Grid.Column="1" Text="{x:Bind Reference}" />
+                        <TextBlock Grid.Column="2" Text="{x:Bind Label}" TextWrapping="Wrap"
+                                   FontWeight="{x:Bind app:Ui.LineWeight(Kind)}" FontSize="{x:Bind app:Ui.LineSize(Kind)}" />
+                        <TextBlock Grid.Column="3" Text="{x:Bind Amount}" TextAlignment="Right" FontFamily="Consolas"
+                                   FontWeight="{x:Bind app:Ui.LineWeight(Kind)}" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <StackPanel Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" Spacing="12">
+            <StackPanel Spacing="8" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <TextBlock Text="對帳單期末餘額" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           Text="填入銀行對帳單印的期末餘額，可檢查交易是否匯入完整；留空則使用已匯入交易計算的餘額。" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="180" Text="{x:Bind ViewModel.StatementBalance, Mode=TwoWay}" />
+                    <Button Content="儲存" Command="{x:Bind ViewModel.SaveStatementBalanceCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <TextBlock Text="帳面分錄（例如已開出的支票）" Style="{StaticResource SubtitleTextBlockStyle}" />
+                <TextBox Header="日期（yyyy-MM-dd）" Text="{x:Bind ViewModel.EntryDate, Mode=TwoWay}" />
+                <TextBox Header="金額（支出為負數）" Text="{x:Bind ViewModel.EntryAmount, Mode=TwoWay}" />
+                <TextBox Header="說明" Text="{x:Bind ViewModel.EntryDescription, Mode=TwoWay}" />
+                <Button Content="新增帳面分錄" Command="{x:Bind ViewModel.AddBookEntryCommand}" />
+                <ListView ItemsSource="{x:Bind ViewModel.BookEntries}" SelectedItem="{x:Bind ViewModel.SelectedEntry, Mode=TwoWay}" MaxHeight="200">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BookEntryItem">
+                            <TextBlock Text="{x:Bind Text}" TextWrapping="Wrap" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="140" PlaceholderText="兌現交易序號" Text="{x:Bind ViewModel.ClearingReference, Mode=TwoWay}" />
+                    <Button Content="標記兌現" Command="{x:Bind ViewModel.ClearEntryCommand}" />
+                    <Button Content="刪除" Command="{x:Bind ViewModel.DeleteEntryCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>
